@@ -71,7 +71,7 @@ export class Poker extends MatchMaker {
         game.deck = shuffleProof.publicOutput.newDeck;
         game.nextTurn();
         game.status = Provable.if(
-            game.curPlayerIndex.equals(UInt64.from(0)) // turn returned to first player
+            game.curPlayerIndex.equals(UInt64.from(0)), // turn returned to first player
             UInt64.from(GameStatus.GAME),
             game.status
         );
@@ -110,8 +110,7 @@ export class Poker extends MatchMaker {
         assert(card.equals(decryptProof.publicInput.initCard));
 
         decryptProof.verify();
-        game.deck.cards[+cardId.toString()] =
-            decryptProof.publicOutput.newCard;
+        game.deck.cards[+cardId.toString()] = decryptProof.publicOutput.newCard;
         this.games.set(gameId, game);
     }
 

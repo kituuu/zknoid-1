@@ -1,6 +1,6 @@
 import { Bool, Group, Provable, Struct, UInt64 } from 'o1js';
 
-const POKER_DECK_SIZE = 52;
+export const POKER_DECK_SIZE = 52;
 
 export class Card extends Struct({
     value: UInt64,
@@ -11,10 +11,12 @@ export class Deck extends Struct({
 }) {}
 
 export class EncryptedCard extends Struct({
-    value: Group,
+    value: [Group, Group], // Change to provable array, or to new Type
 }) {
     equals(ec: EncryptedCard): Bool {
-        return this.value.equals(ec.value);
+        return this.value[0]
+            .equals(ec.value[0])
+            .and(this.value[1].equals(ec.value[1]));
     }
 }
 
