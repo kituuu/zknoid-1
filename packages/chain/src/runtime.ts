@@ -1,5 +1,5 @@
 import { ArkanoidGameHub } from './arkanoid/ArkanoidGameHub';
-import { Fool } from './fool/Fool';
+import { Poker } from './poker/Poker';
 import { Balances } from './framework/balances';
 import { RandzuLogic } from './randzu/RandzuLogic';
 
@@ -8,12 +8,12 @@ export default {
         ArkanoidGameHub,
         Balances,
         RandzuLogic,
-        Fool,
+        Poker,
     },
     config: {
         ArkanoidGameHub: {},
         Balances: {},
         RandzuLogic: {},
-        Fool: {},
+        Poker: {},
     },
 };

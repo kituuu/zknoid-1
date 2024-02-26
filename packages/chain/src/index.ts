@@ -3,7 +3,7 @@ export * from './randzu/index.js';
 export * from './arkanoid/index.js';
 export * from './engine/index.js';
 export * from './framework/index.js';
-export * from './fool/index.js';
+export * from './poker/index.js';
 import { ClientAppChain } from '@proto-kit/sdk';
 
 export { ClientAppChain };
