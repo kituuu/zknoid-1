@@ -107,9 +107,11 @@ const functions = {
   //   return gameProof.toJSON();
   // },
 
-  proveShuffle: async (args: { deckJSON: any; privateKeyJSON: any }) => {
-    let deck = JSON.parse(args.deckJSON) as EncryptedDeck;
-    let privateKey = JSON.parse(args.privateKeyJSON) as PrivateKey;
+  proveShuffle: async (args: { deckJSON: any; pkBase58: any }) => {
+    console.log('Prove shuffle started');
+
+    let deck = EncryptedDeck.fromJSONString(args.deckJSON);
+    let privateKey: PrivateKey = PrivateKey.fromBase58(args.pkBase58);
 
     // @ts-ignore
     let publicInput = new ShuffleProofPublicInput({

@@ -1,6 +1,6 @@
-import { Experimental, Field, Group, PrivateKey, Struct } from 'o1js';
+import { Experimental, Field, Group, PrivateKey, Struct, UInt64 } from 'o1js';
 import { EncryptedCard, EncryptedDeck, POKER_DECK_SIZE } from './types';
-import { encrypt } from '../engine/Hormonic';
+import { convertToMesage, encrypt } from '../engine/Hormonic';
 
 export class ShuffleProofPublicInput extends Struct({
     initialDeck: EncryptedDeck,
@@ -10,13 +10,22 @@ export class ShuffleProofPublicOutput extends Struct({
     newDeck: EncryptedDeck,
 }) {}
 
+const initialEnctyptedDeck = new EncryptedDeck({
+    cards: [...Array(POKER_DECK_SIZE).keys()].map((value) => {
+        return new EncryptedCard({
+            value: convertToMesage(value),
+            numOfEncryption: UInt64.zero,
+        });
+    }),
+});
+
 // # TODO add permutation matrix
 export const shuffle = (
     input: ShuffleProofPublicInput,
     pk: PrivateKey
 ): ShuffleProofPublicOutput => {
     let pubKey = pk.toPublicKey();
-    let newDeck = input.initialDeck;
+    let newDeck = initialEnctyptedDeck;
     // We assume that numOfEncryption equals on each card during shuffle phaze
     let initialNumOfEncryption = input.initialDeck.cards[0].numOfEncryption;
 
@@ -24,7 +33,7 @@ export const shuffle = (
         newDeck.cards[i] = new EncryptedCard({
             value: encrypt(
                 pubKey,
-                newDeck.cards[i].value as [Group, Group], // fix as issue
+                input.initialDeck.cards[i].value as [Group, Group], // fix as issue
                 Field.from(0) // Generate random value(use value from private inputs)
             ),
             numOfEncryption: initialNumOfEncryption.add(1),

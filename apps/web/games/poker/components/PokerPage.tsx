@@ -17,6 +17,8 @@ import {
 } from '../stores/matchQueue';
 import { useSessionKeyStore } from '@/lib/stores/sessionKeyStorage';
 import { PublicKey, UInt64 } from 'o1js';
+import { usePokerWorkerClientStore } from '../stores/pokerWorker';
+import { useRegisterWorkerClient } from '@/lib/stores/workerClient';
 
 enum GameState {
   NotStarted,
@@ -51,6 +53,10 @@ export default function PokerPage({
   const sessionPrivateKey = useStore(useSessionKeyStore, (state) =>
     state.getSessionKey(),
   );
+
+  // useRegisterWorkerClient();
+
+  const workerClientStore = usePokerWorkerClientStore();
 
   const bridge = useMinaBridge();
 
@@ -91,15 +97,25 @@ export default function PokerPage({
     setGameState(GameState.MatchRegistration);
   };
 
-  const decryptAll = async () => {
+  const encryptAll = async () => {
     const poker = client.runtime.resolve('Poker');
+
+    let pokerWorkerClient = await workerClientStore.start();
+
+    const shuffleProof = await pokerWorkerClient.proveShuffle(
+      matchQueue.gameInfo!.contractDeck,
+      sessionPrivateKey,
+    );
 
     const tx = await client.transaction(
       PublicKey.fromBase58(networkStore.address!),
       () => {
-        poker.setup(UInt64.from(matchQueue.activeGameId));
+        poker.setup(UInt64.from(matchQueue.activeGameId), shuffleProof);
       },
     );
+
+    await tx.sign();
+    await tx.send();
   };
 
   return (
@@ -160,7 +176,8 @@ export default function PokerPage({
 
         <GameView
           gameInfo={matchQueue.gameInfo}
-          publicKey={PublicKey.fromBase58(networkStore.address!)}
+          publicKey={networkStore.address!}
+          encryptAll={encryptAll}
         />
         <div>Players in queue: {matchQueue.getQueueLength()}</div>
         <div className="grow"></div>

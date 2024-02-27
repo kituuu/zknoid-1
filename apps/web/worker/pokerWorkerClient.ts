@@ -1,12 +1,18 @@
-import { fetchAccount, Field, Bool, UInt64 } from 'o1js';
+import { fetchAccount, Field, Bool, UInt64, PrivateKey } from 'o1js';
 
 import type {
   PokerWorkerRequest,
   PokerWorkerReponse,
   WorkerFunctions,
 } from './pokerWorker';
-import { Bricks, GameInputs, checkGameRecord } from 'zknoid-chain-dev';
+import {
+  Bricks,
+  EncryptedDeck,
+  GameInputs,
+  checkGameRecord,
+} from 'zknoid-chain-dev';
 import { GameRecordProof } from 'zknoid-chain';
+import { ShuffleProof } from 'zknoid-chain-dev/dist/src/poker/ShuffleProof';
 
 export default class PokerWorkerClient {
   // loadContracts() {
@@ -41,7 +47,16 @@ export default class PokerWorkerClient {
   //   return restoredProof;
   // }
 
-  async proveShuffle() {}
+  async proveShuffle(deck: EncryptedDeck, pk: PrivateKey) {
+    const result = await this._call('proveShuffle', {
+      deckJSON: deck.toJSONString(),
+      pkBase58: pk.toBase58(),
+    });
+    console.log('Restoring', result);
+    const restoredProof = ShuffleProof.fromJSON(result);
+
+    return restoredProof;
+  }
 
   worker: Worker;
 

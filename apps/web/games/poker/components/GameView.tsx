@@ -10,7 +10,8 @@ import { Group, PublicKey } from 'o1js';
 
 interface IGameViewProps {
   gameInfo: IGameInfo | undefined;
-  publicKey: PublicKey | undefined;
+  publicKey: string | undefined;
+  encryptAll: () => Promise<any>;
 }
 
 let defaultCards: { [key: string]: number } = {};
@@ -32,17 +33,13 @@ const cardToString = (card: ICard): string => {
 };
 
 export const GameView = (props: IGameViewProps) => {
-  const encryptAll = async () => {
-    console.log('Click');
-  };
-
   const decryptSingle = async () => {};
 
   return (
     <>
-      <div>Your public key: ${props.publicKey?.toBase58()}</div>
+      <div>Your public key: ${props.publicKey}</div>
       <div>Next user ${props.gameInfo?.nextUser.toBase58()}</div>
-      <div onClick={encryptAll}> Encrypt all </div>
+      <div onClick={props.encryptAll}> Encrypt all </div>
       {props.gameInfo?.deck.map((card) => (
         <div>
           <div>{cardToString(card)}</div>

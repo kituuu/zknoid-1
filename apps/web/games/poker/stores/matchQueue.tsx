@@ -21,6 +21,7 @@ export interface ICard {
 
 export interface IGameInfo {
   gameId: bigint;
+  contractDeck: EncryptedDeck;
   deck: ICard[];
   nextUser: PublicKey;
 }
@@ -169,6 +170,7 @@ export const usePokerMatchQueueStore = create<
           // @ts-ignore
           state.gameInfo = {
             gameId: activeGameId.toBigInt(),
+            contractDeck: gameInfo.deck,
             deck,
             nextUser,
           };

@@ -24,7 +24,7 @@ export const usePokerWorkerClientStore = create<
 
       const zkappWorkerClient = new PokerWorkerClient();
 
-      //   await zkappWorkerClient.waitFor();
+      await zkappWorkerClient.waitFor();
 
       //   set((state) => {
       //     state.status = 'Loading contracts';
