@@ -26,6 +26,7 @@ function forceOptionValue<T>(o: Option<T>): T {
 @runtimeModule()
 export class Poker extends MatchMaker {
     @state() public games = StateMap.from<UInt64, GameInfo>(UInt64, GameInfo);
+    @state() public lastGameId = State.from<UInt64>(UInt64);
 
     @state() public gamesNum = State.from<UInt64>(UInt64);
 
@@ -48,8 +49,10 @@ export class Poker extends MatchMaker {
         opponentReady: Bool,
         opponent: Option<QueueListItem>
     ): UInt64 {
-        // TODO
-        return UInt64.from(0);
+        let newId = this.lastGameId.get().orElse(UInt64.from(1));
+        this.lastGameId.set(newId.add(1));
+
+        return UInt64.from(newId);
     }
 
     @runtimeMethod()

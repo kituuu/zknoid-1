@@ -1,6 +1,6 @@
 'use client';
 
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { GameView } from './GameView';
 import Link from 'next/link';
 import { useNetworkStore } from '@/lib/stores/network';
@@ -11,6 +11,12 @@ import GamePage from '@/components/framework/GamePage';
 import AppChainClientContext from '@/lib/contexts/AppChainClientContext';
 import { getRandomEmoji } from '@/games/randzu/utils';
 import { pokerConfig } from '../config';
+import {
+  useObservePokerMatchQueue,
+  usePokerMatchQueueStore,
+} from '../stores/matchQueue';
+import { useSessionKeyStore } from '@/lib/stores/sessionKeyStorage';
+import { PublicKey, UInt64 } from 'o1js';
 
 enum GameState {
   NotStarted,
@@ -33,18 +39,57 @@ export default function PokerPage({
     throw Error('Context app chain client is not set');
   }
 
+  useObservePokerMatchQueue();
+
   let [loading, setLoading] = useState(true);
-  let [loadingElement, setLoadingElement] = useState<
-    { x: number; y: number } | undefined
-  >({ x: 0, y: 0 });
 
   const networkStore = useNetworkStore();
+  const matchQueue = usePokerMatchQueueStore();
+  const sessionPublicKey = useStore(useSessionKeyStore, (state) =>
+    state.getSessionKey(),
+  ).toPublicKey();
+  const sessionPrivateKey = useStore(useSessionKeyStore, (state) =>
+    state.getSessionKey(),
+  );
 
   const bridge = useMinaBridge();
 
+  useEffect(() => {
+    if (matchQueue.inQueue && !matchQueue.activeGameId) {
+      setGameState(GameState.Matchmaking);
+    } else if (matchQueue.activeGameId) {
+      setGameState(GameState.Active);
+    } else {
+      if (matchQueue.lastGameState == 'win') setGameState(GameState.Won);
+
+      if (matchQueue.lastGameState == 'lost') setGameState(GameState.Lost);
+    }
+  }, [matchQueue.activeGameId, matchQueue.inQueue, matchQueue.lastGameState]);
+
   const restart = () => {};
 
-  const startGame = async () => {};
+  const startGame = async () => {
+    // if (competition!.enteringPrice > 0) {
+    //   console.log(await bridge(competition?.enteringPrice! * 10 ** 9));
+    // }
+
+    const poker = client.runtime.resolve('Poker');
+
+    const tx = await client.transaction(
+      PublicKey.fromBase58(networkStore.address!),
+      () => {
+        poker.register(
+          sessionPublicKey,
+          UInt64.from(Math.round(Date.now() / 1000)),
+        );
+      },
+    );
+
+    await tx.sign();
+    await tx.send();
+
+    setGameState(GameState.MatchRegistration);
+  };
 
   return (
     <GamePage gameConfig={pokerConfig}>
@@ -95,8 +140,15 @@ export default function PokerPage({
           </Link>
         )}
 
+        {gameState == GameState.MatchRegistration && (
+          <div>Registering in the match pool 📝 ...</div>
+        )}
+        {gameState == GameState.Matchmaking && (
+          <div>Searching for opponents 🔍 ...</div>
+        )}
+
         <GameView />
-        <div>Players in queue: {/*matchQueue.getQueueLength()*/ 0}</div>
+        <div>Players in queue: {matchQueue.getQueueLength()}</div>
         <div className="grow"></div>
         {/* <div className="flex flex-col gap-10">
           <div>
