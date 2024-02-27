@@ -122,7 +122,7 @@ appChain.configure({
         Balances: {},
         ArkanoidGameHub: {},
         RandzuLogic: {},
-        Fool: {},
+        Poker: {},
     },
 });
 

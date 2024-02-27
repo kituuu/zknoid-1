@@ -42,11 +42,11 @@ export const defaultGames: IGame[] = [
     active: true,
   },
   {
-    id: 'fool',
-    logo: '/fool.jpg',
-    name: 'Fool card game',
+    id: 'Poker',
+    logo: '/poker.webp',
+    name: 'Poker card game',
     description:
-      'The objective of the game is to shed all one\'s cards when there are no more cards left in the deck. At the end of the game, the last player with cards in their hand is the durak or "fool".',
+      "Poker is comparing card game in which players wager over which hand is best according to that specific game's rules.",
     tags: ['L2 game', 'multiplayer', 'card games'],
     defaultPage: 'global',
     active: true,

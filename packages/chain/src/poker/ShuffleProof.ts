@@ -1,6 +1,6 @@
 import { Experimental, Field, Group, PrivateKey, Struct } from 'o1js';
 import { EncryptedCard, EncryptedDeck, POKER_DECK_SIZE } from './types';
-import { encrypt } from 'src/engine/Hormonic';
+import { encrypt } from '../engine/Hormonic';
 
 export class ShuffleProofPublicInput extends Struct({
     initialDeck: EncryptedDeck,
