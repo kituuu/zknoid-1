@@ -17,6 +17,8 @@ const shuffle = (
 ): ShuffleProofPublicOutput => {
     let pubKey = pk.toPublicKey();
     let newDeck = input.initialDeck;
+    // We assume that numOfEncryption equals on each card during shuffle phaze
+    let initialNumOfEncryption = input.initialDeck.cards[0].numOfEncryption;
 
     for (let i = 0; i < POKER_DECK_SIZE; i++) {
         newDeck.cards[i] = new EncryptedCard({
@@ -25,6 +27,7 @@ const shuffle = (
                 newDeck.cards[i].value as [Group, Group], // fix as issue
                 Field.from(0) // Generate random value(use value from private inputs)
             ),
+            numOfEncryption: initialNumOfEncryption.add(1),
         });
     }
 

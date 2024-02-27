@@ -13,7 +13,15 @@ import {
 } from 'o1js';
 import { ShuffleProof } from './ShuffleProof';
 import { DecryptProof } from './DecryptProof';
-import { EncryptedDeck, GameIndex, GameInfo, GameStatus } from './types';
+import {
+    EncryptedCard,
+    EncryptedDeck,
+    GameIndex,
+    GameInfo,
+    GameStatus,
+    POKER_DECK_SIZE,
+} from './types';
+import { convertToMesage } from 'src/engine/Hormonic';
 
 function forceOptionValue<T>(o: Option<T>): T {
     assert(
@@ -22,6 +30,15 @@ function forceOptionValue<T>(o: Option<T>): T {
     );
     return o.value;
 }
+
+const initialEnctyptedDeck = new EncryptedDeck({
+    cards: [...Array(POKER_DECK_SIZE).keys()].map((value) => {
+        return new EncryptedCard({
+            value: convertToMesage(value),
+            numOfEncryption: UInt64.zero,
+        });
+    }),
+});
 
 @runtimeModule()
 export class Poker extends MatchMaker {
@@ -51,6 +68,31 @@ export class Poker extends MatchMaker {
     ): UInt64 {
         let newId = this.lastGameId.get().orElse(UInt64.from(1));
         this.lastGameId.set(newId.add(1));
+
+        this.games.set(
+            Provable.if(opponentReady, newId, UInt64.zero),
+            new GameInfo({
+                status: UInt64.from(GameStatus.SETUP),
+                deck: initialEnctyptedDeck,
+                curPlayerIndex: UInt64.zero,
+                waitDecFrom: UInt64.zero,
+                maxPlayers: UInt64.from(2), // Change depending on opponents count. For now only 2 players
+                lastCardIndex: UInt64.zero,
+            })
+        );
+
+        /// #TODO Transform to provable
+        let players = [opponent.value.userAddress, this.transaction.sender];
+
+        for (let i = 0; i < players.length; i++) {
+            this.players.set(
+                new GameIndex({
+                    gameId: newId,
+                    index: UInt64.from(i),
+                }),
+                players[i]
+            );
+        }
 
         return UInt64.from(newId);
     }

@@ -1,5 +1,10 @@
 import { Field, Group, PrivateKey, PublicKey } from 'o1js';
 
+// Check if it is ok
+export const convertToMesage = (v: number): [Group, Group] => {
+    return [Group.generator.scale(v), Group.generator];
+};
+
 /*
     g - generator
     pk - public key for encryption

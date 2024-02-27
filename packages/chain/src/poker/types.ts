@@ -12,11 +12,13 @@ export class Deck extends Struct({
 
 export class EncryptedCard extends Struct({
     value: [Group, Group], // Change to provable array, or to new Type
+    numOfEncryption: UInt64,
 }) {
     equals(ec: EncryptedCard): Bool {
         return this.value[0]
             .equals(ec.value[0])
-            .and(this.value[1].equals(ec.value[1]));
+            .and(this.value[1].equals(ec.value[1]))
+            .and(this.numOfEncryption.equals(ec.numOfEncryption));
     }
 }
 
