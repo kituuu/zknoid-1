@@ -5,7 +5,7 @@ import { mockProof } from '@/lib/utils';
 import { GetServerSideProps } from 'next';
 import { Field, Bool, Mina, PublicKey, UInt64 } from 'o1js016';
 
-import { Field as Field014 } from 'o1js';
+import { Field as Field014, PrivateKey } from 'o1js';
 import {
   checkMapGeneration,
   checkGameRecord,
@@ -18,8 +18,14 @@ import {
   processTicks,
   GameRecordProof,
   client,
+  EncryptedDeck,
 } from 'zknoid-chain-dev';
 import { DummyBridge } from 'zknoidcontractsl1';
+import {
+  ShuffleProof,
+  ShuffleProofPublicInput,
+  shuffle,
+} from 'zknoid-chain-dev/dist/src/poker/ShuffleProof';
 
 type Transaction = Awaited<ReturnType<typeof Mina.transaction>>;
 
@@ -101,7 +107,23 @@ const functions = {
   //   return gameProof.toJSON();
   // },
 
-  proveShuffle: async (args: {}) => {},
+  proveShuffle: async (args: { deckJSON: any; privateKeyJSON: any }) => {
+    let deck = JSON.parse(args.deckJSON) as EncryptedDeck;
+    let privateKey = JSON.parse(args.privateKeyJSON) as PrivateKey;
+
+    // @ts-ignore
+    let publicInput = new ShuffleProofPublicInput({
+      initialDeck: deck,
+    });
+    let publicOutput = shuffle(publicInput, privateKey);
+    const shuffleProof = await mockProof(
+      publicOutput,
+      ShuffleProof,
+      publicInput,
+    ); // #TODO change to real proof
+
+    return shuffleProof.toJSON();
+  },
 };
 
 // ---------------------------------------------------------------------------------------

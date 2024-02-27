@@ -31,11 +31,12 @@ export async function mockProof<O, P>(
     publicOutput: any;
     maxProofsVerified: 0 | 2 | 1;
   }) => P,
+  publicInput?: P.publicInput,
 ): Promise<P> {
   return new ProofType({
     proof: dummy.proof,
     maxProofsVerified: 2,
-    publicInput: undefined,
+    publicInput,
     publicOutput,
   });
 }

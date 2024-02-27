@@ -11,7 +11,7 @@ export class ShuffleProofPublicOutput extends Struct({
 }) {}
 
 // # TODO add permutation matrix
-const shuffle = (
+export const shuffle = (
     input: ShuffleProofPublicInput,
     pk: PrivateKey
 ): ShuffleProofPublicOutput => {
