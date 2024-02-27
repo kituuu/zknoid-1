@@ -91,6 +91,17 @@ export default function PokerPage({
     setGameState(GameState.MatchRegistration);
   };
 
+  const decryptAll = async () => {
+    const poker = client.runtime.resolve('Poker');
+
+    const tx = await client.transaction(
+      PublicKey.fromBase58(networkStore.address!),
+      () => {
+        poker.setup(UInt64.from(matchQueue.activeGameId));
+      },
+    );
+  };
+
   return (
     <GamePage gameConfig={pokerConfig}>
       <main className="flex grow flex-col items-center gap-5 p-5">
@@ -147,7 +158,10 @@ export default function PokerPage({
           <div>Searching for opponents 🔍 ...</div>
         )}
 
-        <GameView />
+        <GameView
+          gameInfo={matchQueue.gameInfo}
+          publicKey={PublicKey.fromBase58(networkStore.address!)}
+        />
         <div>Players in queue: {matchQueue.getQueueLength()}</div>
         <div className="grow"></div>
         {/* <div className="flex flex-col gap-10">

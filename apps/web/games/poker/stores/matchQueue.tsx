@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { PublicKey, UInt32, UInt64 } from 'o1js';
+import { Group, PublicKey, UInt32, UInt64 } from 'o1js';
 import { useContext, useEffect } from 'react';
 import { useProtokitChainStore } from '@/lib/stores/protokitChain';
 import { useNetworkStore } from '@/lib/stores/network';
@@ -8,9 +8,21 @@ import { RoundIdxUser } from 'zknoid-chain-dev';
 import AppChainClientContext from '@/lib/contexts/AppChainClientContext';
 import { pokerConfig } from '../config';
 import { ClientAppChain } from '@proto-kit/sdk';
+import {
+  EncryptedCard,
+  EncryptedDeck,
+  GameIndex,
+} from 'zknoid-chain-dev/dist/src/poker/types';
+
+export interface ICard {
+  value: [Group, Group];
+  numOfEncryptions: number;
+}
 
 export interface IGameInfo {
   gameId: bigint;
+  deck: ICard[];
+  nextUser: PublicKey;
 }
 
 export interface MatchQueueState {
@@ -127,6 +139,22 @@ export const usePokerMatchQueueStore = create<
           (await client.query.runtime.Poker.games.get(activeGameId))!;
         console.log('Raw game info', gameInfo);
 
+        let deck = gameInfo.deck.cards.map((card: EncryptedCard) => {
+          return {
+            value: card.value,
+            numOfEncryptions: +card.numOfEncryption.toString(), // #TODO change to the same name
+          };
+        });
+
+        let nextUserIndex = gameInfo.curPlayerIndex;
+        // @ts-ignore
+        let userIndex = new GameIndex({
+          gameId: activeGameId!,
+          index: nextUserIndex,
+        });
+        let nextUser =
+          (await client.query.runtime.Poker.players.get(userIndex))!;
+
         // const currentUserIndex = address
         //   .equals(gameInfo.player1 as PublicKey)
         //   .toBoolean()
@@ -141,6 +169,8 @@ export const usePokerMatchQueueStore = create<
           // @ts-ignore
           state.gameInfo = {
             gameId: activeGameId.toBigInt(),
+            deck,
+            nextUser,
           };
           console.log('Parsed game info', state.gameInfo);
         });

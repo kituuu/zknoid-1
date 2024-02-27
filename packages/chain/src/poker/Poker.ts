@@ -21,7 +21,7 @@ import {
     GameStatus,
     POKER_DECK_SIZE,
 } from './types';
-import { convertToMesage } from 'src/engine/Hormonic';
+import { convertToMesage } from '../engine/Hormonic';
 
 function forceOptionValue<T>(o: Option<T>): T {
     assert(
@@ -31,7 +31,7 @@ function forceOptionValue<T>(o: Option<T>): T {
     return o.value;
 }
 
-const initialEnctyptedDeck = new EncryptedDeck({
+export const initialEnctyptedDeck = new EncryptedDeck({
     cards: [...Array(POKER_DECK_SIZE).keys()].map((value) => {
         return new EncryptedCard({
             value: convertToMesage(value),
@@ -99,6 +99,13 @@ export class Poker extends MatchMaker {
 
     @runtimeMethod()
     public setup(gameId: UInt64, shuffleProof: ShuffleProof) {
+        const sessionSender = this.sessions.get(this.transaction.sender);
+        const sender = Provable.if(
+            sessionSender.isSome,
+            sessionSender.value,
+            this.transaction.sender
+        );
+
         let game = forceOptionValue(this.games.get(gameId));
         // Check that game in setup status
         assert(game.status.equals(UInt64.from(GameStatus.SETUP)));
@@ -106,7 +113,7 @@ export class Poker extends MatchMaker {
         let currentPlayer = this.getUserByIndex(gameId, game.curPlayerIndex);
 
         // Check if right player runing setup
-        assert(currentPlayer.equals(this.transaction.sender));
+        assert(currentPlayer.equals(sender));
 
         // Check shuffle proof
         shuffleProof.verify();
