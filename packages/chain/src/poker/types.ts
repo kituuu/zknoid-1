@@ -141,7 +141,7 @@ export class EncryptedCard extends Struct({
         let curV = Group.generator;
         let value = 0;
         let color = 0;
-        for (let i = 0; i < 14; i++) {
+        for (let i = 0; i < 15; i++) {
             if (curV.equals(this.value[0]).toBoolean()) {
                 value = i;
             }

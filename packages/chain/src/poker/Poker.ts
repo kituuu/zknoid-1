@@ -39,7 +39,7 @@ export const initialEnctyptedDeck = new EncryptedDeck({
     cards: [...Array(MAX_VALUE - MIN_VALUE).keys()].flatMap((value) => {
         return [...Array(MAX_COLOR).keys()].map((color) => {
             return new Card({
-                value: UInt64.from(value + 1),
+                value: UInt64.from(value + MIN_VALUE + 1),
                 color: UInt64.from(color + 1),
             }).toEncryptedCard();
         });
