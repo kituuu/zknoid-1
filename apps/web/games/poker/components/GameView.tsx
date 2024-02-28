@@ -12,6 +12,7 @@ interface IGameViewProps {
   gameInfo: IGameInfo | undefined;
   publicKey: string | undefined;
   encryptAll: () => Promise<any>;
+  decryptSingle: (i: number) => Promise<any>;
 }
 
 let defaultCards: { [key: string]: number } = {};
@@ -33,18 +34,19 @@ const cardToString = (card: ICard): string => {
 };
 
 export const GameView = (props: IGameViewProps) => {
-  const decryptSingle = async () => {};
-
   return (
     <>
       <div>Your public key: ${props.publicKey}</div>
       <div>Next user ${props.gameInfo?.nextUser.toBase58()}</div>
       <div onClick={props.encryptAll}> Encrypt all </div>
-      {props.gameInfo?.deck.map((card) => (
+      {props.gameInfo?.deck.map((card, i) => (
         <div>
           <div>{cardToString(card)}</div>
           {card.numOfEncryptions != 0 && (
-            <div onClick={decryptSingle}> Decrypt this card </div>
+            <div onClick={() => props.decryptSingle(i)}>
+              {' '}
+              Decrypt this card{' '}
+            </div>
           )}
         </div>
       ))}

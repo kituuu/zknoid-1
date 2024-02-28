@@ -9,7 +9,7 @@ export class DecryptProofPublicOutput extends Struct({
     newCard: EncryptedCard,
 }) {}
 
-const proofDecrypt = (
+export const proveDecrypt = (
     publicInput: DecryptProofPublicInput,
     pk: PrivateKey
 ): DecryptProofPublicOutput => {
@@ -30,7 +30,7 @@ export const Decrypt = Experimental.ZkProgram({
     methods: {
         decrypt: {
             privateInputs: [PrivateKey],
-            method: proofDecrypt,
+            method: proveDecrypt,
         },
     },
 });

@@ -19,6 +19,7 @@ import {
   GameRecordProof,
   client,
   EncryptedDeck,
+  EncryptedCard,
 } from 'zknoid-chain-dev';
 import { DummyBridge } from 'zknoidcontractsl1';
 import {
@@ -26,6 +27,11 @@ import {
   ShuffleProofPublicInput,
   shuffle,
 } from 'zknoid-chain-dev/dist/src/poker/ShuffleProof';
+import {
+  DecryptProof,
+  DecryptProofPublicInput,
+  proveDecrypt,
+} from 'zknoid-chain-dev/dist/src/poker/DecryptProof';
 
 type Transaction = Awaited<ReturnType<typeof Mina.transaction>>;
 
@@ -125,6 +131,26 @@ const functions = {
     ); // #TODO change to real proof
 
     return shuffleProof.toJSON();
+  },
+
+  proveDecrypt: async (args: { cardJSON: any; pkBase58: any }) => {
+    console.log('Prove decode started');
+    let card = EncryptedCard.fromJSONString(args.cardJSON);
+    let privateKey: PrivateKey = PrivateKey.fromBase58(args.pkBase58);
+
+    // @ts-ignore
+    let publicInput = new DecryptProofPublicInput({
+      initCard: card,
+    });
+
+    let publicOutput = proveDecrypt(publicInput, privateKey);
+    const decryptProof = await mockProof(
+      publicOutput,
+      DecryptProof,
+      publicInput,
+    );
+
+    return decryptProof.toJSON();
   },
 };
 

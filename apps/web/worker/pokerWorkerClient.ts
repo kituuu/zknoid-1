@@ -7,12 +7,14 @@ import type {
 } from './pokerWorker';
 import {
   Bricks,
+  EncryptedCard,
   EncryptedDeck,
   GameInputs,
   checkGameRecord,
 } from 'zknoid-chain-dev';
 import { GameRecordProof } from 'zknoid-chain';
 import { ShuffleProof } from 'zknoid-chain-dev/dist/src/poker/ShuffleProof';
+import { DecryptProof } from 'zknoid-chain-dev/dist/src/poker/DecryptProof';
 
 export default class PokerWorkerClient {
   // loadContracts() {
@@ -54,6 +56,17 @@ export default class PokerWorkerClient {
     });
     console.log('Restoring', result);
     const restoredProof = ShuffleProof.fromJSON(result);
+
+    return restoredProof;
+  }
+
+  async proveDecrypt(card: EncryptedCard, pk: PrivateKey) {
+    const result = await this._call('proveDecrypt', {
+      cardJSON: card.toJSONString(),
+      pkBase58: pk.toBase58(),
+    });
+    console.log('Restoring', result);
+    const restoredProof = DecryptProof.fromJSON(result);
 
     return restoredProof;
   }

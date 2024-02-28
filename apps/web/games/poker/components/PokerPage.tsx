@@ -19,6 +19,7 @@ import { useSessionKeyStore } from '@/lib/stores/sessionKeyStorage';
 import { PublicKey, UInt64 } from 'o1js';
 import { usePokerWorkerClientStore } from '../stores/pokerWorker';
 import { useRegisterWorkerClient } from '@/lib/stores/workerClient';
+import { EncryptedCard } from 'zknoid-chain-dev';
 
 enum GameState {
   NotStarted,
@@ -98,8 +99,6 @@ export default function PokerPage({
   };
 
   const encryptAll = async () => {
-    const poker = client.runtime.resolve('Poker');
-
     let pokerWorkerClient = await workerClientStore.start();
 
     const shuffleProof = await pokerWorkerClient.proveShuffle(
@@ -107,10 +106,42 @@ export default function PokerPage({
       sessionPrivateKey,
     );
 
+    const poker = client.runtime.resolve('Poker');
+
     const tx = await client.transaction(
       PublicKey.fromBase58(networkStore.address!),
       () => {
         poker.setup(UInt64.from(matchQueue.activeGameId), shuffleProof);
+      },
+    );
+
+    await tx.sign();
+    await tx.send();
+  };
+
+  const decryptSingle = async (cardId: number) => {
+    let card = matchQueue.gameInfo!.contractDeck.cards[cardId];
+    // console.log(card);
+    // console.log(cardId);
+    // console.log(matchQueue.gameInfo!);
+    // Change to single workerClientStore.start
+    let pokerWorkerClient = await workerClientStore.start();
+
+    const decryptProof = await pokerWorkerClient.proveDecrypt(
+      card,
+      sessionPrivateKey,
+    );
+
+    const poker = client.runtime.resolve('Poker');
+
+    const tx = await client.transaction(
+      PublicKey.fromBase58(networkStore.address!),
+      () => {
+        poker.decryptCard(
+          UInt64.from(matchQueue.activeGameId),
+          UInt64.from(cardId),
+          decryptProof,
+        );
       },
     );
 
@@ -178,6 +209,7 @@ export default function PokerPage({
           gameInfo={matchQueue.gameInfo}
           publicKey={networkStore.address!}
           encryptAll={encryptAll}
+          decryptSingle={decryptSingle}
         />
         <div>Players in queue: {matchQueue.getQueueLength()}</div>
         <div className="grow"></div>
