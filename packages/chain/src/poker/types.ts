@@ -11,10 +11,62 @@ export class Deck extends Struct({
     cards: Provable.Array(Card, POKER_DECK_SIZE),
 }) {}
 
+function getRandomInt(max: number) {
+    return Math.floor(Math.random() * max);
+}
+
+const permutateArray = <T>(array: T[]): T[] => {
+    /// Copy array
+    let rest = array.slice();
+    let res: T[] = [];
+
+    while (rest.length > 0) {
+        let randomIndex = getRandomInt(rest.length);
+        res.push(rest.splice(randomIndex, 1)[0]);
+    }
+
+    return res;
+};
+
+export class PermutationMatrix extends Struct({
+    value: Provable.Array(
+        Provable.Array(UInt64, POKER_DECK_SIZE),
+        POKER_DECK_SIZE
+    ),
+}) {
+    static getZeroMatrix(): PermutationMatrix {
+        return new PermutationMatrix({
+            value: [...Array(POKER_DECK_SIZE).keys()].map((i) => {
+                let row = new Array(POKER_DECK_SIZE).fill(UInt64.zero);
+                row[i] = UInt64.one;
+                return row;
+            }),
+        });
+    }
+
+    static getRandomMatrix(): PermutationMatrix {
+        let initital = PermutationMatrix.getZeroMatrix();
+        return new PermutationMatrix({ value: permutateArray(initital.value) });
+    }
+
+    toString(): string {
+        return this.value
+            .map((row) => row.map((value) => +value.toString()))
+            .reduce((prev, cur) => prev + '\n' + cur.toString(), '');
+    }
+}
+
 export class EncryptedCard extends Struct({
     value: [Group, Group], // Change to provable array, or to new Type
     numOfEncryption: UInt64,
 }) {
+    static zero(): EncryptedCard {
+        return new EncryptedCard({
+            value: [Group.zero, Group.zero],
+            numOfEncryption: UInt64.zero,
+        });
+    }
+
     equals(ec: EncryptedCard): Bool {
         return this.value[0]
             .equals(ec.value[0])
@@ -28,6 +80,31 @@ export class EncryptedCard extends Struct({
         let numOfEncryption = this.numOfEncryption.toJSON();
 
         return JSON.stringify({ v1, v2, numOfEncryption });
+    }
+
+    copy(): EncryptedCard {
+        return EncryptedCard.fromJSONString(this.toJSONString());
+    }
+
+    // Used for permutation. Do not make sense otherwise
+    mul(num: UInt64): EncryptedCard {
+        num.assertLessThan(UInt64.from(2));
+        return Provable.if(
+            num.equals(UInt64.zero),
+            EncryptedCard,
+            EncryptedCard.zero(),
+            this
+        ) as EncryptedCard;
+    }
+    // Used for permutation. Do not make sense otherwise
+    add(ec: EncryptedCard): EncryptedCard {
+        return new EncryptedCard({
+            value: [
+                this.value[0].add(ec.value[0]),
+                this.value[1].add(ec.value[1]),
+            ],
+            numOfEncryption: this.numOfEncryption.add(ec.numOfEncryption),
+        });
     }
 
     static fromJSONString(data: string): EncryptedCard {
@@ -74,6 +151,23 @@ export class EncryptedDeck extends Struct({
         }
 
         return JSON.stringify(cardsJSONs);
+    }
+
+    applyPermutation(permutation: PermutationMatrix): EncryptedDeck {
+        let final = EncryptedDeck.fromJSONString(this.toJSONString()); // Is it proper copy for proof?
+
+        for (let i = 0; i < permutation.value.length; i++) {
+            let res = EncryptedCard.zero();
+            let curRow = permutation.value[i];
+
+            for (let j = 0; j < permutation.value[i].length; j++) {
+                res = res.add(this.cards[j].mul(curRow[j]));
+            }
+
+            final.cards[i] = res;
+        }
+
+        return final;
     }
 }
 

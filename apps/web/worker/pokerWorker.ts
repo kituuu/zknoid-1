@@ -20,6 +20,7 @@ import {
   client,
   EncryptedDeck,
   EncryptedCard,
+  PermutationMatrix,
 } from 'zknoid-chain-dev';
 import { DummyBridge } from 'zknoidcontractsl1';
 import {
@@ -123,7 +124,9 @@ const functions = {
     let publicInput = new ShuffleProofPublicInput({
       initialDeck: deck,
     });
-    let publicOutput = shuffle(publicInput, privateKey);
+    let permutationMatrix = PermutationMatrix.getRandomMatrix();
+
+    let publicOutput = shuffle(publicInput, privateKey, permutationMatrix);
     const shuffleProof = await mockProof(
       publicOutput,
       ShuffleProof,

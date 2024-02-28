@@ -1,5 +1,19 @@
-import { Experimental, Field, Group, PrivateKey, Struct, UInt64 } from 'o1js';
-import { EncryptedCard, EncryptedDeck, POKER_DECK_SIZE } from './types';
+import {
+    Bool,
+    Experimental,
+    Field,
+    Group,
+    PrivateKey,
+    Provable,
+    Struct,
+    UInt64,
+} from 'o1js';
+import {
+    EncryptedCard,
+    EncryptedDeck,
+    POKER_DECK_SIZE,
+    PermutationMatrix,
+} from './types';
 import { convertToMesage, encrypt } from '../engine/Hormonic';
 
 export class ShuffleProofPublicInput extends Struct({
@@ -21,24 +35,28 @@ const initialEnctyptedDeck = new EncryptedDeck({
 
 // # TODO add permutation matrix
 export const shuffle = (
-    input: ShuffleProofPublicInput,
-    pk: PrivateKey
+    publiciInput: ShuffleProofPublicInput,
+    pk: PrivateKey,
+    permutation: PermutationMatrix
 ): ShuffleProofPublicOutput => {
     let pubKey = pk.toPublicKey();
     let newDeck = initialEnctyptedDeck;
     // We assume that numOfEncryption equals on each card during shuffle phaze
-    let initialNumOfEncryption = input.initialDeck.cards[0].numOfEncryption;
+    let initialNumOfEncryption =
+        publiciInput.initialDeck.cards[0].numOfEncryption;
 
     for (let i = 0; i < POKER_DECK_SIZE; i++) {
         newDeck.cards[i] = new EncryptedCard({
             value: encrypt(
                 pubKey,
-                input.initialDeck.cards[i].value as [Group, Group], // fix as issue
+                publiciInput.initialDeck.cards[i].value as [Group, Group], // fix as issue
                 Field.from(0) // Generate random value(use value from private inputs)
             ),
             numOfEncryption: initialNumOfEncryption.add(1),
         });
     }
+
+    newDeck = newDeck.applyPermutation(permutation);
 
     return new ShuffleProofPublicOutput({
         newDeck,
@@ -50,7 +68,7 @@ export const Shuffle = Experimental.ZkProgram({
     publicOutput: ShuffleProofPublicOutput,
     methods: {
         shuffle: {
-            privateInputs: [PrivateKey], // Also there should be permutation matrix
+            privateInputs: [PrivateKey, PermutationMatrix], // Also there should be permutation matrix
             method: shuffle,
         },
     },
