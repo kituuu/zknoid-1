@@ -14,11 +14,15 @@ import {
 import { ShuffleProof } from './ShuffleProof';
 import { DecryptProof } from './DecryptProof';
 import {
+    Card,
     EncryptedCard,
     EncryptedDeck,
     GameIndex,
     GameInfo,
     GameStatus,
+    MAX_COLOR,
+    MAX_VALUE,
+    MIN_VALUE,
     POKER_DECK_SIZE,
 } from './types';
 import { convertToMesage } from '../engine/Hormonic';
@@ -32,10 +36,12 @@ function forceOptionValue<T>(o: Option<T>): T {
 }
 
 export const initialEnctyptedDeck = new EncryptedDeck({
-    cards: [...Array(POKER_DECK_SIZE).keys()].map((value) => {
-        return new EncryptedCard({
-            value: convertToMesage(value),
-            numOfEncryption: UInt64.zero,
+    cards: [...Array(MAX_VALUE - MIN_VALUE).keys()].flatMap((value) => {
+        return [...Array(MAX_COLOR).keys()].map((color) => {
+            return new Card({
+                value: UInt64.from(value + 1),
+                color: UInt64.from(color + 1),
+            }).toEncryptedCard();
         });
     }),
 });

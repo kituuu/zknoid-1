@@ -15,21 +15,11 @@ interface IGameViewProps {
   decryptSingle: (i: number) => Promise<any>;
 }
 
-let defaultCards: { [key: string]: number } = {};
-
-const messageToKey = (m: [Group, Group]): string => {
-  return m[0].x.toString();
-};
-
-[...Array(POKER_DECK_SIZE).keys()].forEach((value) => {
-  defaultCards[messageToKey(convertToMesage(value))] = value;
-});
-
-const cardToString = (card: ICard): string => {
-  if (card.numOfEncryptions == 0) {
-    return defaultCards[messageToKey(card.value as [Group, Group])].toString();
+const cardToString = (ec: EncryptedCard): string => {
+  if (+ec.numOfEncryption.toString() == 0) {
+    return ec.toCard().toString();
   } else {
-    return `Hidden. Decryptions left: ${card.numOfEncryptions}`;
+    return `Hidden. Decryptions left: ${ec.numOfEncryption.toString()}`;
   }
 };
 
@@ -39,17 +29,19 @@ export const GameView = (props: IGameViewProps) => {
       <div>Your public key: ${props.publicKey}</div>
       <div>Next user ${props.gameInfo?.nextUser.toBase58()}</div>
       <div onClick={props.encryptAll}> Encrypt all </div>
-      {props.gameInfo?.deck.map((card, i) => (
-        <div>
-          <div>{cardToString(card)}</div>
-          {card.numOfEncryptions != 0 && (
-            <div onClick={() => props.decryptSingle(i)}>
-              {' '}
-              Decrypt this card{' '}
-            </div>
-          )}
-        </div>
-      ))}
+      {props.gameInfo?.contractDeck.cards.map(
+        (card: EncryptedCard, i: number) => (
+          <div>
+            <div>{cardToString(card)}</div>
+            {+card.numOfEncryption.toString() != 0 && (
+              <div onClick={() => props.decryptSingle(i)}>
+                {' '}
+                Decrypt this card{' '}
+              </div>
+            )}
+          </div>
+        ),
+      )}
     </>
   );
 };

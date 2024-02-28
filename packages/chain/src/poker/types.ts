@@ -2,10 +2,29 @@ import { Bool, Group, Provable, Struct, UInt64 } from 'o1js';
 import { Json } from 'o1js/dist/node/bindings/mina-transaction/gen/transaction';
 
 export const POKER_DECK_SIZE = 52;
+export const MIN_VALUE = 2;
+export const MAX_VALUE = 15;
+export const MAX_COLOR = 4;
 
+// May be do it not Struct. It is used only fo initialization and web
 export class Card extends Struct({
-    value: UInt64,
-}) {}
+    value: UInt64, // TODO check value \in [2, 14]
+    color: UInt64, // TODO check value \in [0, 3]
+}) {
+    toEncryptedCard(): EncryptedCard {
+        return new EncryptedCard({
+            value: [
+                Group.generator.scale(+this.value.toString()), // It is ok as long as Card is not used in contract and proofs
+                Group.generator.scale(+this.color.toString()),
+            ],
+            numOfEncryption: UInt64.zero,
+        });
+    }
+
+    toString(): string {
+        return `Value: ${this.value.toString()}. Color: ${this.color.toString()}`;
+    }
+}
 
 export class Deck extends Struct({
     cards: Provable.Array(Card, POKER_DECK_SIZE),
@@ -113,6 +132,30 @@ export class EncryptedCard extends Struct({
         return new EncryptedCard({
             value: [Group.fromJSON(v1), Group.fromJSON(v2)],
             numOfEncryption: UInt64.fromJSON(numOfEncryption),
+        });
+    }
+
+    toCard(): Card {
+        this.numOfEncryption.assertEquals(UInt64.zero);
+
+        let curV = Group.generator;
+        let value = 0;
+        let color = 0;
+        for (let i = 0; i < 14; i++) {
+            if (curV.equals(this.value[0]).toBoolean()) {
+                value = i;
+            }
+
+            if (curV.equals(this.value[1]).toBoolean()) {
+                color = i;
+            }
+
+            curV = curV.add(Group.generator);
+        }
+
+        return new Card({
+            value: UInt64.from(value),
+            color: UInt64.from(color),
         });
     }
 }
