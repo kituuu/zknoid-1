@@ -21,7 +21,7 @@ interface IGameViewProps {
 
 const eCardToDiv = (ec: EncryptedCard): ReactElement => {
   return (
-    <div>
+    <div className="w-max">
       <Image
         src="/poker_cards/black_joker.svg"
         alt=""
@@ -35,7 +35,7 @@ const eCardToDiv = (ec: EncryptedCard): ReactElement => {
 
 const cardToDiv = (card: Card): ReactElement => {
   return (
-    <div>
+    <div className="w-max">
       {/* {`${card.value.toString()}_${card.color.toString()}`} */}
       <Image
         src={`/poker_cards/${card.value.toString()}_${card.color.toString()}.svg`}
@@ -92,24 +92,35 @@ export const GameView = (props: IGameViewProps) => {
   }, [props.gameInfo?.contractDeck]);
 
   return (
-    <>
+    <div className="flex w-full flex-grow flex-col">
       <div>Your public key: ${props.publicKey}</div>
       <div>Next user ${props.gameInfo?.nextUser.toBase58()}</div>
       <div onClick={props.encryptAll}> Encrypt all </div>
-      <div className="grid grid-flow-col grid-rows-4 content-start gap-4 ">
-        {openCards.map(([card]) => {
-          return cardToDiv(card);
-        })}
-      </div>
-      {closedCards.length && (
-        <div>
-          <div>{closedCards.length > 0 && eCardToDiv(closedCards[0][0])}</div>
-          <div onClick={() => props.decryptSingle(closedCards[0][1])}>
-            {' '}
-            Decrypt this card{' '}
+
+      <div className="flex flex-grow flex-col">
+        <div className="width h-40 w-full flex-none"></div>
+        <div className="w-full flex-grow">
+          {' '}
+          <div className="grid-flow-rows grid auto-rows-max grid-cols-10 gap-4 ">
+            {openCards.map(([card]) => {
+              return cardToDiv(card);
+            })}
           </div>
         </div>
-      )}
-    </>
+        <div className="h-40 w-full flex-none">
+          {closedCards.length > 0 && (
+            <div>
+              <div>
+                {closedCards.length > 0 && eCardToDiv(closedCards[0][0])}
+              </div>
+              <div onClick={() => props.decryptSingle(closedCards[0][1])}>
+                {' '}
+                Decrypt this card{' '}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };

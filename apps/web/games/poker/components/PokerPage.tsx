@@ -225,7 +225,6 @@ export default function PokerPage({
           decryptSingle={decryptSingle}
         />
         <div>Players in queue: {matchQueue.getQueueLength()}</div>
-        <div className="grow"></div>
         {/* <div className="flex flex-col gap-10">
           <div>
             Active competitions:
