@@ -19,7 +19,7 @@ import { useSessionKeyStore } from '@/lib/stores/sessionKeyStorage';
 import { PublicKey, UInt64 } from 'o1js';
 import { usePokerWorkerClientStore } from '../stores/pokerWorker';
 import { useRegisterWorkerClient } from '@/lib/stores/workerClient';
-import { EncryptedCard } from 'zknoid-chain-dev';
+import { EncryptedCard, GameStatus } from 'zknoid-chain-dev';
 
 enum GameState {
   NotStarted,
@@ -72,6 +72,19 @@ export default function PokerPage({
       if (matchQueue.lastGameState == 'lost') setGameState(GameState.Lost);
     }
   }, [matchQueue.activeGameId, matchQueue.inQueue, matchQueue.lastGameState]);
+
+  useEffect(() => {
+    if (gameState != GameState.Active) {
+      return;
+    }
+
+    if (
+      matchQueue.gameInfo?.nextUser.toBase58() == networkStore.address &&
+      matchQueue.gameInfo?.status == GameStatus.SETUP
+    ) {
+      encryptAll();
+    }
+  }, [gameState, matchQueue.gameInfo?.nextUser]);
 
   const restart = () => {};
 

@@ -20,6 +20,7 @@ export interface ICard {
 }
 
 export interface IGameInfo {
+  status: number;
   gameId: bigint;
   contractDeck: EncryptedDeck;
   deck: ICard[];
@@ -156,6 +157,8 @@ export const usePokerMatchQueueStore = create<
         let nextUser =
           (await client.query.runtime.Poker.players.get(userIndex))!;
 
+        let status = +gameInfo.status.toString();
+
         // const currentUserIndex = address
         //   .equals(gameInfo.player1 as PublicKey)
         //   .toBoolean()
@@ -169,6 +172,7 @@ export const usePokerMatchQueueStore = create<
         set((state) => {
           // @ts-ignore
           state.gameInfo = {
+            status,
             gameId: activeGameId.toBigInt(),
             contractDeck: gameInfo.deck,
             deck,

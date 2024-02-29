@@ -220,7 +220,7 @@ export enum GameStatus {
 }
 
 export class GameInfo extends Struct({
-    status: UInt64, // change to provable type
+    status: UInt64,
     deck: EncryptedDeck,
     curPlayerIndex: UInt64, // Index of current player
     waitDecFrom: UInt64,
