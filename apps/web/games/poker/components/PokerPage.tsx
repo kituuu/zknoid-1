@@ -74,6 +74,7 @@ export default function PokerPage({
   }, [matchQueue.activeGameId, matchQueue.inQueue, matchQueue.lastGameState]);
 
   useEffect(() => {
+    setLoading(false);
     if (gameState != GameState.Active) {
       return;
     }
@@ -121,14 +122,13 @@ export default function PokerPage({
 
     const poker = client.runtime.resolve('Poker');
 
-    const tx = await client.transaction(
-      PublicKey.fromBase58(networkStore.address!),
-      () => {
-        poker.setup(UInt64.from(matchQueue.activeGameId), shuffleProof);
-      },
-    );
+    const tx = await client.transaction(sessionPublicKey, () => {
+      poker.setup(UInt64.from(matchQueue.activeGameId), shuffleProof);
+    });
 
-    await tx.sign();
+    setLoading(true);
+
+    tx.transaction = tx.transaction?.sign(sessionPrivateKey);
     await tx.send();
   };
 
@@ -147,18 +147,17 @@ export default function PokerPage({
 
     const poker = client.runtime.resolve('Poker');
 
-    const tx = await client.transaction(
-      PublicKey.fromBase58(networkStore.address!),
-      () => {
-        poker.decryptCard(
-          UInt64.from(matchQueue.activeGameId),
-          UInt64.from(cardId),
-          decryptProof,
-        );
-      },
-    );
+    const tx = await client.transaction(sessionPublicKey, () => {
+      poker.decryptCard(
+        UInt64.from(matchQueue.activeGameId),
+        UInt64.from(cardId),
+        decryptProof,
+      );
+    });
 
-    await tx.sign();
+    setLoading(true);
+
+    tx.transaction = tx.transaction?.sign(sessionPrivateKey);
     await tx.send();
   };
 
@@ -217,6 +216,8 @@ export default function PokerPage({
         {gameState == GameState.Matchmaking && (
           <div>Searching for opponents 🔍 ...</div>
         )}
+
+        {loading && <div> Transaction execution </div>}
 
         <GameView
           gameInfo={matchQueue.gameInfo}
