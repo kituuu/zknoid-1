@@ -15,7 +15,7 @@ import {
     POKER_DECK_SIZE,
     PermutationMatrix,
 } from './types';
-import { convertToMesage, encrypt } from '../engine/Hormonic';
+import { convertToMesage, encrypt } from '../engine/ElGamal';
 
 export class ShuffleProofPublicInput extends Struct({
     initialDeck: EncryptedDeck,

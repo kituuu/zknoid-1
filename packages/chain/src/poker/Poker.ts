@@ -25,7 +25,7 @@ import {
     MIN_VALUE,
     POKER_DECK_SIZE,
 } from './types';
-import { convertToMesage } from '../engine/Hormonic';
+import { convertToMesage } from '../engine/ElGamal';
 
 function forceOptionValue<T>(o: Option<T>): T {
     assert(

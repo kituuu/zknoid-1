@@ -1,6 +1,6 @@
 import { Experimental, Group, PrivateKey, Struct } from 'o1js';
 import { EncryptedCard } from './types';
-import { decrypt } from '../engine/Hormonic';
+import { decrypt } from '../engine/ElGamal';
 
 export class DecryptProofPublicInput extends Struct({
     initCard: EncryptedCard,

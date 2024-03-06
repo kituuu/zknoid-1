@@ -1,6 +1,6 @@
 import { randomInt } from 'crypto';
 import { Field, Group, PrivateKey, PublicKey } from 'o1js';
-import { decrypt, encrypt } from '../../src/engine/Hormonic';
+import { decrypt, encrypt } from '../../src/engine/ElGamal';
 
 describe('Horminic encryption test', () => {
     it('Can encrypt/decrypt', () => {
