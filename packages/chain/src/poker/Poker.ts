@@ -38,6 +38,7 @@ function forceOptionValue<T>(o: Option<T>): T {
 export const initialEnctyptedDeck = new EncryptedDeck({
     cards: [...Array(MAX_VALUE - MIN_VALUE).keys()].flatMap((value) => {
         return [...Array(MAX_COLOR).keys()].map((color) => {
+            console.log(`${value + MIN_VALUE}-${color}`);
             return new Card({
                 value: UInt64.from(value + MIN_VALUE),
                 color: UInt64.from(color),

@@ -148,10 +148,10 @@ export class EncryptedCard extends Struct({
 
         let groupVal = this.value[1].sub(this.value[2]);
         let curV = Group.generator;
-        let value = MIN_VALUE;
+        let value = 0;
         let color = 0;
         let found = false;
-        for (let i = 0; i < 16 * 4; i++) {
+        for (let i = 0; i < MAX_VALUE * MAX_COLOR; i++) {
             if (curV.equals(groupVal).toBoolean()) {
                 found = true;
                 break;
