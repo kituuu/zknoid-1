@@ -1,4 +1,4 @@
-import { Bool, Group, Provable, Struct, UInt64 } from 'o1js';
+import { Bool, Group, Provable, Struct, UInt64, PublicKey } from 'o1js';
 import { Json } from 'o1js/dist/node/bindings/mina-transaction/gen/transaction';
 
 export const POKER_DECK_SIZE = 52;
@@ -14,8 +14,13 @@ export class Card extends Struct({
     toEncryptedCard(): EncryptedCard {
         return new EncryptedCard({
             value: [
-                Group.generator.scale(+this.value.toString()), // It is ok as long as Card is not used in contract and proofs
-                Group.generator.scale(+this.color.toString()),
+                Group.zero,
+                Group.generator.scale(
+                    +this.value.toString() * 4 + +this.color.toString() + 1 // +1 so no zero point
+                ),
+                Group.zero,
+                // Group.generator.scale(+this.value.toString()), // It is ok as long as Card is not used in contract and proofs
+                // Group.generator.scale(+this.color.toString()),
             ],
             numOfEncryption: UInt64.zero,
         });
@@ -76,12 +81,12 @@ export class PermutationMatrix extends Struct({
 }
 
 export class EncryptedCard extends Struct({
-    value: [Group, Group], // Change to provable array, or to new Type
+    value: [Group, Group, Group], // Change to provable array, or to new Type
     numOfEncryption: UInt64,
 }) {
     static zero(): EncryptedCard {
         return new EncryptedCard({
-            value: [Group.zero, Group.zero],
+            value: [Group.zero, Group.zero, Group.zero],
             numOfEncryption: UInt64.zero,
         });
     }
@@ -90,15 +95,17 @@ export class EncryptedCard extends Struct({
         return this.value[0]
             .equals(ec.value[0])
             .and(this.value[1].equals(ec.value[1]))
+            .and(this.value[2].equals(ec.value[2]))
             .and(this.numOfEncryption.equals(ec.numOfEncryption));
     }
 
     toJSONString(): string {
         let v1 = this.value[0].toJSON();
         let v2 = this.value[1].toJSON();
+        let v3 = this.value[2].toJSON();
         let numOfEncryption = this.numOfEncryption.toJSON();
 
-        return JSON.stringify({ v1, v2, numOfEncryption });
+        return JSON.stringify({ v1, v2, v3, numOfEncryption });
     }
 
     copy(): EncryptedCard {
@@ -121,16 +128,17 @@ export class EncryptedCard extends Struct({
             value: [
                 this.value[0].add(ec.value[0]),
                 this.value[1].add(ec.value[1]),
+                this.value[2].add(ec.value[2]),
             ],
             numOfEncryption: this.numOfEncryption.add(ec.numOfEncryption),
         });
     }
 
     static fromJSONString(data: string): EncryptedCard {
-        let { v1, v2, numOfEncryption } = JSON.parse(data);
+        let { v1, v2, v3, numOfEncryption } = JSON.parse(data);
 
         return new EncryptedCard({
-            value: [Group.fromJSON(v1), Group.fromJSON(v2)],
+            value: [Group.fromJSON(v1), Group.fromJSON(v2), Group.fromJSON(v3)],
             numOfEncryption: UInt64.fromJSON(numOfEncryption),
         });
     }
@@ -138,20 +146,26 @@ export class EncryptedCard extends Struct({
     toCard(): Card {
         this.numOfEncryption.assertEquals(UInt64.zero);
 
+        let groupVal = this.value[1].sub(this.value[2]);
         let curV = Group.generator;
-        let value = 0;
+        let value = MIN_VALUE;
         let color = 0;
-        for (let i = 0; i < 15; i++) {
-            if (curV.equals(this.value[0]).toBoolean()) {
-                value = i;
-            }
-
-            if (curV.equals(this.value[1]).toBoolean()) {
-                color = i;
+        let found = false;
+        for (let i = 0; i < 16 * 4; i++) {
+            if (curV.equals(groupVal).toBoolean()) {
+                found = true;
+                break;
             }
 
             curV = curV.add(Group.generator);
+            color++;
+            value += Math.floor(color / MAX_COLOR);
+            color = color % MAX_COLOR;
         }
+
+        // if (!found) {
+        //     throw Error('Card cannot be decrypted');
+        // }
 
         return new Card({
             value: UInt64.from(value),
@@ -226,6 +240,7 @@ export class GameInfo extends Struct({
     waitDecFrom: UInt64,
     maxPlayers: UInt64,
     lastCardIndex: UInt64,
+    agrigatedPubKey: PublicKey,
 }) {
     nextTurn() {
         // Bypass protokit simulation with no state. In this case this.maxPlayers == 0, and fails

@@ -39,8 +39,8 @@ export const initialEnctyptedDeck = new EncryptedDeck({
     cards: [...Array(MAX_VALUE - MIN_VALUE).keys()].flatMap((value) => {
         return [...Array(MAX_COLOR).keys()].map((color) => {
             return new Card({
-                value: UInt64.from(value + MIN_VALUE + 1),
-                color: UInt64.from(color + 1),
+                value: UInt64.from(value + MIN_VALUE),
+                color: UInt64.from(color),
             }).toEncryptedCard();
         });
     }),
@@ -75,6 +75,30 @@ export class Poker extends MatchMaker {
         let newId = this.lastGameId.get().orElse(UInt64.from(1));
         this.lastGameId.set(newId.add(1));
 
+        let opp = Provable.if(
+            opponent.isSome,
+            this.userToSession
+                .get(opponent.value.userAddress)
+                .orElse(this.transaction.sender),
+            this.transaction.sender // Workaround. PublicKey.zero cannot be transformed to Group elem
+        );
+
+        assert(
+            this.userToSession
+                .get(this.transaction.sender)
+                .value.equals(PublicKey.empty())
+                .not()
+        );
+
+        let pubKeyList = [
+            this.userToSession
+                .get(this.transaction.sender)
+                .orElse(this.transaction.sender),
+            opp,
+        ];
+
+        let agrigatedPubKey = this.getAgrigatedPubKey(pubKeyList);
+
         this.games.set(
             Provable.if(opponentReady, newId, UInt64.zero),
             new GameInfo({
@@ -84,6 +108,7 @@ export class Poker extends MatchMaker {
                 waitDecFrom: UInt64.zero,
                 maxPlayers: UInt64.from(2), // Change depending on opponents count. For now only 2 players
                 lastCardIndex: UInt64.zero,
+                agrigatedPubKey,
             })
         );
 
@@ -101,6 +126,15 @@ export class Poker extends MatchMaker {
         }
 
         return UInt64.from(newId);
+    }
+
+    // #TODO change to provable
+    private getAgrigatedPubKey(pubKeys: PublicKey[]): PublicKey {
+        return PublicKey.fromGroup(
+            pubKeys
+                .map((val) => val.toGroup())
+                .reduce((acc, val) => acc.add(val), Group.zero)
+        );
     }
 
     @runtimeMethod()

@@ -116,7 +116,7 @@ export default function PokerPage({
 
     const shuffleProof = await pokerWorkerClient.proveShuffle(
       matchQueue.gameInfo!.contractDeck,
-      sessionPrivateKey,
+      matchQueue.gameInfo!.agrigatedPubKey,
     );
 
     const poker = client.runtime.resolve('Poker');
@@ -221,6 +221,7 @@ export default function PokerPage({
         <GameView
           gameInfo={matchQueue.gameInfo}
           publicKey={networkStore.address!}
+          sessionKey={sessionPublicKey.toBase58()}
           encryptAll={encryptAll}
           decryptSingle={decryptSingle}
         />

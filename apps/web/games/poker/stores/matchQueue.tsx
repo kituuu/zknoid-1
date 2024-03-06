@@ -25,6 +25,7 @@ export interface IGameInfo {
   contractDeck: EncryptedDeck;
   deck: ICard[];
   nextUser: PublicKey;
+  agrigatedPubKey: PublicKey;
 }
 
 export interface MatchQueueState {
@@ -158,7 +159,7 @@ export const usePokerMatchQueueStore = create<
           (await client.query.runtime.Poker.players.get(userIndex))!;
 
         let status = +gameInfo.status.toString();
-
+        let agrigatedPubKey = gameInfo.agrigatedPubKey;
         // const currentUserIndex = address
         //   .equals(gameInfo.player1 as PublicKey)
         //   .toBoolean()
@@ -177,6 +178,7 @@ export const usePokerMatchQueueStore = create<
             contractDeck: gameInfo.deck,
             deck,
             nextUser,
+            agrigatedPubKey,
           };
           console.log('Parsed game info', state.gameInfo);
         });

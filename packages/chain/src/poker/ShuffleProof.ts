@@ -5,6 +5,7 @@ import {
     Group,
     PrivateKey,
     Provable,
+    PublicKey,
     Struct,
     UInt64,
 } from 'o1js';
@@ -18,6 +19,7 @@ import { convertToMesage, encrypt } from '../engine/Hormonic';
 
 export class ShuffleProofPublicInput extends Struct({
     initialDeck: EncryptedDeck,
+    agrigatedPubKey: PublicKey,
 }) {}
 
 export class ShuffleProofPublicOutput extends Struct({
@@ -33,13 +35,11 @@ const initialEnctyptedDeck = new EncryptedDeck({
     }),
 });
 
-// # TODO add permutation matrix
 export const shuffle = (
     publiciInput: ShuffleProofPublicInput,
-    pk: PrivateKey,
-    permutation: PermutationMatrix
+    permutation: PermutationMatrix,
+    noise: Field[] // #TODO change to provable array(if needed)
 ): ShuffleProofPublicOutput => {
-    let pubKey = pk.toPublicKey();
     let newDeck = initialEnctyptedDeck;
     // We assume that numOfEncryption equals on each card during shuffle phaze
     let initialNumOfEncryption =
@@ -48,9 +48,13 @@ export const shuffle = (
     for (let i = 0; i < POKER_DECK_SIZE; i++) {
         newDeck.cards[i] = new EncryptedCard({
             value: encrypt(
-                pubKey,
-                publiciInput.initialDeck.cards[i].value as [Group, Group], // fix as issue
-                Field.from(0) // Generate random value(use value from private inputs)
+                publiciInput.agrigatedPubKey,
+                publiciInput.initialDeck.cards[i].value as [
+                    Group,
+                    Group,
+                    Group,
+                ], // fix as issue
+                noise[i] // Generate random value(use value from private inputs)
             ),
             numOfEncryption: initialNumOfEncryption.add(1),
         });
@@ -68,7 +72,10 @@ export const Shuffle = Experimental.ZkProgram({
     publicOutput: ShuffleProofPublicOutput,
     methods: {
         shuffle: {
-            privateInputs: [PrivateKey, PermutationMatrix], // Also there should be permutation matrix
+            privateInputs: [
+                PermutationMatrix,
+                Provable.Array(Field, POKER_DECK_SIZE),
+            ],
             method: shuffle,
         },
     },

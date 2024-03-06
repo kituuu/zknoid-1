@@ -3,9 +3,9 @@ import { BRIDGE_CACHE } from '@/constants/bridge_cache';
 import { WebFileSystem, fetchCache } from '@/lib/cache';
 import { mockProof } from '@/lib/utils';
 import { GetServerSideProps } from 'next';
-import { Field, Bool, Mina, PublicKey, UInt64 } from 'o1js016';
+import { Mina } from 'o1js016';
 
-import { Field as Field014, PrivateKey } from 'o1js';
+import { Field as Field014, PrivateKey, PublicKey } from 'o1js';
 import {
   checkMapGeneration,
   checkGameRecord,
@@ -21,6 +21,7 @@ import {
   EncryptedDeck,
   EncryptedCard,
   PermutationMatrix,
+  POKER_DECK_SIZE,
 } from 'zknoid-chain-dev';
 import { DummyBridge } from 'zknoidcontractsl1';
 import {
@@ -33,6 +34,7 @@ import {
   DecryptProofPublicInput,
   proveDecrypt,
 } from 'zknoid-chain-dev/dist/src/poker/DecryptProof';
+import { randomBytes } from 'crypto';
 
 type Transaction = Awaited<ReturnType<typeof Mina.transaction>>;
 
@@ -114,24 +116,32 @@ const functions = {
   //   return gameProof.toJSON();
   // },
 
-  proveShuffle: async (args: { deckJSON: any; pkBase58: any }) => {
+  proveShuffle: async (args: { deckJSON: any; agrigatedPkBase58: any }) => {
     console.log('Prove shuffle started');
 
     let deck = EncryptedDeck.fromJSONString(args.deckJSON);
-    let privateKey: PrivateKey = PrivateKey.fromBase58(args.pkBase58);
+
+    let agrigatedPubKey: PublicKey = PublicKey.fromBase58(
+      args.agrigatedPkBase58,
+    );
 
     // @ts-ignore
-    let publicInput = new ShuffleProofPublicInput({
+    let publicInput: ShuffleProofPublicInput = new ShuffleProofPublicInput({
       initialDeck: deck,
+      agrigatedPubKey: agrigatedPubKey,
     });
     let permutationMatrix = PermutationMatrix.getRandomMatrix();
 
-    let publicOutput = shuffle(publicInput, privateKey, permutationMatrix);
+    let noise = [...Array(POKER_DECK_SIZE)].map(() =>
+      Field014.from('0x' + randomBytes(253).toString('hex')),
+    );
+
+    let publicOutput = shuffle(publicInput, permutationMatrix, noise);
     const shuffleProof = await mockProof(
       publicOutput,
       ShuffleProof,
       publicInput,
-    ); // #TODO change to real proof
+    );
 
     return shuffleProof.toJSON();
   },

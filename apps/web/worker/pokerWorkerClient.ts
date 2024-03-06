@@ -1,4 +1,4 @@
-import { fetchAccount, Field, Bool, UInt64, PrivateKey } from 'o1js';
+import { fetchAccount, Field, Bool, UInt64, PrivateKey, PublicKey } from 'o1js';
 
 import type {
   PokerWorkerRequest,
@@ -49,10 +49,10 @@ export default class PokerWorkerClient {
   //   return restoredProof;
   // }
 
-  async proveShuffle(deck: EncryptedDeck, pk: PrivateKey) {
+  async proveShuffle(deck: EncryptedDeck, agrigatedPubKey: PublicKey) {
     const result = await this._call('proveShuffle', {
       deckJSON: deck.toJSONString(),
-      pkBase58: pk.toBase58(),
+      agrigatedPkBase58: agrigatedPubKey.toBase58(),
     });
     console.log('Restoring', result);
     const restoredProof = ShuffleProof.fromJSON(result);

@@ -15,7 +15,7 @@ export const proveDecrypt = (
 ): DecryptProofPublicOutput => {
     // TODO normal decryption. Current is not secure, but for tests - ok
     let newCard = new EncryptedCard({
-        value: decrypt(pk, publicInput.initCard.value as [Group, Group]),
+        value: decrypt(pk, publicInput.initCard.value as [Group, Group, Group]),
         numOfEncryption: publicInput.initCard.numOfEncryption.sub(1),
     });
 

@@ -1,6 +1,5 @@
 'use client';
 
-import { convertToMesage } from 'zknoid-chain-dev';
 import {
   Card,
   EncryptedCard,
@@ -15,6 +14,7 @@ import Image from 'next/image';
 interface IGameViewProps {
   gameInfo: IGameInfo | undefined;
   publicKey: string | undefined;
+  sessionKey: string | undefined;
   encryptAll: () => Promise<any>;
   decryptSingle: (i: number) => Promise<any>;
 }
@@ -94,6 +94,7 @@ export const GameView = (props: IGameViewProps) => {
   return (
     <div className="flex w-full flex-grow flex-col">
       <div>Your public key: ${props.publicKey}</div>
+      <div>Your session public key: ${props.sessionKey}</div>
       <div>Next user ${props.gameInfo?.nextUser.toBase58()}</div>
       <div onClick={props.encryptAll}> Encrypt all </div>
 
