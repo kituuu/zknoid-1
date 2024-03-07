@@ -153,7 +153,7 @@ const functions = {
 
     // @ts-ignore
     let publicInput = new DecryptProofPublicInput({
-      initCard: card,
+      m0: card.value[0],
     });
 
     let publicOutput = proveDecrypt(publicInput, privateKey);

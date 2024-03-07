@@ -91,11 +91,11 @@ export class EncryptedCard extends Struct({
         });
     }
 
+    // !Equals do not check this.value[2]!
     equals(ec: EncryptedCard): Bool {
         return this.value[0]
             .equals(ec.value[0])
             .and(this.value[1].equals(ec.value[1]))
-            .and(this.value[2].equals(ec.value[2]))
             .and(this.numOfEncryption.equals(ec.numOfEncryption));
     }
 

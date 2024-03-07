@@ -199,10 +199,24 @@ export class Poker extends MatchMaker {
     ) {
         let game = forceOptionValue(this.games.get(gameId));
         let card = game.deck.cards[+cardId.toString()]; // Unprovable. Change to provable version
-        assert(card.equals(decryptProof.publicInput.initCard));
+        assert(card.value[0].equals(decryptProof.publicInput.m0));
 
         decryptProof.verify();
-        game.deck.cards[+cardId.toString()] = decryptProof.publicOutput.newCard;
+        game.deck.cards[+cardId.toString()].value[2] = game.deck.cards[
+            +cardId.toString()
+        ].value[2].add(decryptProof.publicOutput.decryptedPart);
+
+        let prevNumOfEncryption =
+            game.deck.cards[+cardId.toString()].numOfEncryption;
+        // Workaround protokit simulation with no state
+        let subValue = Provable.if(
+            prevNumOfEncryption.greaterThan(UInt64.zero),
+            UInt64.from(1),
+            UInt64.zero
+        );
+
+        game.deck.cards[+cardId.toString()].numOfEncryption =
+            game.deck.cards[+cardId.toString()].numOfEncryption.sub(subValue);
         this.games.set(gameId, game);
     }
 

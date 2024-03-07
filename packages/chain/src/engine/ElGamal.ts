@@ -28,6 +28,10 @@ export const encrypt = (
     return newM;
 };
 
+export const decryptOne = (sk: PrivateKey, m0: Group): Group => {
+    return m0.scale(sk.s);
+};
+
 // Value = m[1] - m[2]
 export const decrypt = (
     sk: PrivateKey,

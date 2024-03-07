@@ -1,26 +1,22 @@
 import { Experimental, Group, PrivateKey, Struct } from 'o1js';
 import { EncryptedCard } from './types';
-import { decrypt } from '../engine/ElGamal';
+import { decrypt, decryptOne } from '../engine/ElGamal';
 
 export class DecryptProofPublicInput extends Struct({
-    initCard: EncryptedCard,
+    m0: Group,
 }) {}
 export class DecryptProofPublicOutput extends Struct({
-    newCard: EncryptedCard,
+    decryptedPart: Group,
 }) {}
 
 export const proveDecrypt = (
     publicInput: DecryptProofPublicInput,
     pk: PrivateKey
 ): DecryptProofPublicOutput => {
-    // TODO normal decryption. Current is not secure, but for tests - ok
-    let newCard = new EncryptedCard({
-        value: decrypt(pk, publicInput.initCard.value as [Group, Group, Group]),
-        numOfEncryption: publicInput.initCard.numOfEncryption.sub(1),
-    });
+    let decryptedPart = decryptOne(pk, publicInput.m0);
 
     return new DecryptProofPublicOutput({
-        newCard,
+        decryptedPart,
     });
 };
 
