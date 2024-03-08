@@ -25,7 +25,8 @@ import {
     MIN_VALUE,
     POKER_DECK_SIZE,
 } from './types';
-import { convertToMesage } from '../engine/ElGamal';
+
+const MAX_PLAYERS = 2;
 
 function forceOptionValue<T>(o: Option<T>): T {
     assert(
@@ -218,6 +219,18 @@ export class Poker extends MatchMaker {
         game.deck.cards[+cardId.toString()].numOfEncryption =
             game.deck.cards[+cardId.toString()].numOfEncryption.sub(subValue);
         this.games.set(gameId, game);
+    }
+
+    // #TODO check if array is provable. Change if it is not
+    @runtimeMethod()
+    public decryptMultipleCards(
+        gameId: UInt64,
+        cardsId: UInt64[],
+        decryptProofs: DecryptProof[]
+    ) {
+        for (let i = 0; i < cardsId.length; i++) {
+            this.decryptCard(gameId, cardsId[i], decryptProofs[i]);
+        }
     }
 
     private getUserByIndex(gameId: UInt64, index: UInt64): PublicKey {
