@@ -19,6 +19,14 @@ interface IGameViewProps {
   decryptSingle: (i: number) => Promise<any>;
 }
 
+const anyCardToDiv = (ec: EncryptedCard): ReactElement => {
+  if (+ec.numOfEncryption.toString() == 0) {
+    return cardToDiv(ec.toCard());
+  } else {
+    return eCardToDiv(ec);
+  }
+};
+
 const eCardToDiv = (ec: EncryptedCard): ReactElement => {
   return (
     <div className="w-max">
@@ -100,27 +108,28 @@ export const GameView = (props: IGameViewProps) => {
 
       <div className="flex flex-grow flex-col">
         <div className="width h-40 w-full flex-none"></div>
-        <div className="w-full flex-grow">
-          {' '}
-          <div className="grid-flow-rows grid auto-rows-max grid-cols-10 gap-4 ">
-            {openCards.map(([card]) => {
+        <div className="flex w-full flex-grow items-center justify-center">
+          <div className="flex justify-center gap-5">
+            {props.gameInfo?.contractDeck.cards.slice(0, 5).map(anyCardToDiv)}
+
+            {/* {openCards.slice(0, 4).map(([card]) => {
               return cardToDiv(card);
             })}
+
+            {closedCards.length > 0 && (
+              <div>
+                <div>
+                  {closedCards.length > 0 && eCardToDiv(closedCards[0][0])}
+                </div>
+                <div onClick={() => props.decryptSingle(closedCards[0][1])}>
+                  {' '}
+                  Decrypt this card{' '}
+                </div>
+              </div>
+            )} */}
           </div>
         </div>
-        <div className="h-40 w-full flex-none">
-          {closedCards.length > 0 && (
-            <div>
-              <div>
-                {closedCards.length > 0 && eCardToDiv(closedCards[0][0])}
-              </div>
-              <div onClick={() => props.decryptSingle(closedCards[0][1])}>
-                {' '}
-                Decrypt this card{' '}
-              </div>
-            </div>
-          )}
-        </div>
+        <div className="h-40 w-full flex-none"></div>
       </div>
     </div>
   );

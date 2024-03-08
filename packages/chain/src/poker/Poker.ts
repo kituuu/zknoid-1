@@ -221,17 +221,17 @@ export class Poker extends MatchMaker {
         this.games.set(gameId, game);
     }
 
-    // #TODO check if array is provable. Change if it is not
-    @runtimeMethod()
-    public decryptMultipleCards(
-        gameId: UInt64,
-        cardsId: UInt64[],
-        decryptProofs: DecryptProof[]
-    ) {
-        for (let i = 0; i < cardsId.length; i++) {
-            this.decryptCard(gameId, cardsId[i], decryptProofs[i]);
-        }
-    }
+    // // #TODO check if array is provable. Change if it is not
+    // @runtimeMethod()
+    // public decryptMultipleCards(
+    //     gameId: UInt64,
+    //     cardsId: UInt64[],
+    //     decryptProofs: DecryptProof[]
+    // ) {
+    //     for (let i = 0; i < cardsId.length; i++) {
+    //         this.decryptCard(gameId, cardsId[i], decryptProofs[i]);
+    //     }
+    // }
 
     private getUserByIndex(gameId: UInt64, index: UInt64): PublicKey {
         return forceOptionValue(
