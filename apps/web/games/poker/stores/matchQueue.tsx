@@ -26,6 +26,8 @@ export interface IGameInfo {
   deck: ICard[];
   nextUser: PublicKey;
   agrigatedPubKey: PublicKey;
+  players: number;
+  selfIndex: number;
 }
 
 export interface MatchQueueState {
@@ -160,6 +162,21 @@ export const usePokerMatchQueueStore = create<
 
         let status = +gameInfo.status.toString();
         let agrigatedPubKey = gameInfo.agrigatedPubKey;
+        let players = +gameInfo.maxPlayers.toString();
+        let selfIndex = -1;
+
+        for (let i = 0; i < players; i++) {
+          // @ts-ignore
+          let index = new GameIndex({
+            gameId: activeGameId!,
+            index: UInt64.from(i),
+          });
+          let curPlayer = await client.query.runtime.Poker.players.get(index);
+
+          if (curPlayer?.equals(address).toBoolean()) {
+            selfIndex = i;
+          }
+        }
         // const currentUserIndex = address
         //   .equals(gameInfo.player1 as PublicKey)
         //   .toBoolean()
@@ -179,6 +196,8 @@ export const usePokerMatchQueueStore = create<
             deck,
             nextUser,
             agrigatedPubKey,
+            players,
+            selfIndex,
           };
           console.log('Parsed game info', state.gameInfo);
         });

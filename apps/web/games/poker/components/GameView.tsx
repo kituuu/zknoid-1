@@ -104,6 +104,7 @@ export const GameView = (props: IGameViewProps) => {
       <div>Your public key: ${props.publicKey}</div>
       <div>Your session public key: ${props.sessionKey}</div>
       <div>Next user ${props.gameInfo?.nextUser.toBase58()}</div>
+      <div>Index ${props.gameInfo?.selfIndex}</div>
       <div onClick={props.encryptAll}> Encrypt all </div>
 
       <div className="flex flex-grow flex-col">

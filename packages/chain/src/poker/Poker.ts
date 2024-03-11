@@ -243,4 +243,17 @@ export class Poker extends MatchMaker {
             )
         );
     }
+
+    /// First 5 cards [0, 4] are common cards
+    /// Next card are players cards [5, 6] - 1st player, [7, 8] - second and so on
+    /// Returns 0 if it is common card, userId +1 if it is card of userId
+    private getCardOwner(gameId: UInt64, index: UInt64): UInt64 {
+        let value = Provable.if(
+            index.lessThan(UInt64.from(5)),
+            UInt64.zero,
+            index.sub(UInt64.from(5)).div(UInt64.from(2)).add(UInt64.from(1))
+        );
+
+        return value;
+    }
 }
