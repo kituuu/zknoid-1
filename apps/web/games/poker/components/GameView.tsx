@@ -19,6 +19,16 @@ interface IGameViewProps {
   decryptSingle: (i: number) => Promise<any>;
 }
 
+const getPlayerCardsDiv = (ed: EncryptedDeck, i: number): ReactElement => {
+  const playerCards = ed.cards.slice(5 + 2 * i, 5 + 2 * i + 2);
+
+  return (
+    <div className="flex h-full justify-center gap-1">
+      {playerCards.map((card: EncryptedCard) => anyCardToDiv(card))}
+    </div>
+  );
+};
+
 const anyCardToDiv = (ec: EncryptedCard): ReactElement => {
   if (+ec.numOfEncryption.toString() == 0) {
     return cardToDiv(ec.toCard());
@@ -29,14 +39,17 @@ const anyCardToDiv = (ec: EncryptedCard): ReactElement => {
 
 const eCardToDiv = (ec: EncryptedCard): ReactElement => {
   return (
-    <div className="w-max">
+    <div className="flex h-full w-max flex-col">
       <Image
+        className="max-h-full flex-grow object-scale-down"
         src="/poker_cards/black_joker.svg"
         alt=""
         width={167}
         height={242}
       />
-      <div>Numer of encryptions: {ec.numOfEncryption.toString()}</div>
+      <div className="h-4 flex-none text-center">
+        {ec.numOfEncryption.toString()}
+      </div>
     </div>
   );
 };
@@ -108,7 +121,14 @@ export const GameView = (props: IGameViewProps) => {
       <div onClick={props.encryptAll}> Encrypt all </div>
 
       <div className="flex flex-grow flex-col">
-        <div className="width h-40 w-full flex-none"></div>
+        <div className="width h-40 w-full flex-none">
+          {props.gameInfo?.contractDeck &&
+            [...Array(props.gameInfo?.players).keys()]
+              .filter((elem) => elem != props.gameInfo?.selfIndex)
+              .map((index) =>
+                getPlayerCardsDiv(props.gameInfo?.contractDeck!, index),
+              )}
+        </div>
         <div className="flex w-full flex-grow items-center justify-center">
           <div className="flex justify-center gap-5">
             {props.gameInfo?.contractDeck.cards.slice(0, 5).map(anyCardToDiv)}
@@ -130,7 +150,13 @@ export const GameView = (props: IGameViewProps) => {
             )} */}
           </div>
         </div>
-        <div className="h-40 w-full flex-none"></div>
+        <div className="h-40 w-full flex-none justify-center">
+          {props.gameInfo?.contractDeck &&
+            getPlayerCardsDiv(
+              props.gameInfo?.contractDeck,
+              props.gameInfo?.selfIndex,
+            )}
+        </div>
       </div>
     </div>
   );
