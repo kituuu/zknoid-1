@@ -12,7 +12,7 @@ import {
     UInt64,
 } from 'o1js';
 import { ShuffleProof } from './ShuffleProof';
-import { DecryptProof } from './DecryptProof';
+import { DecryptProof, InitialOpenProof } from './DecryptProof';
 import {
     Card,
     EncryptedCard,
@@ -24,6 +24,7 @@ import {
     MAX_VALUE,
     MIN_VALUE,
     POKER_DECK_SIZE,
+    UserActionIndex,
 } from './types';
 
 const MAX_PLAYERS = 2;
@@ -63,17 +64,23 @@ export class Poker extends MatchMaker {
         PublicKey
     );
 
+    // #TODO remove
     // [GameId, cardIndex] => player
     @state() public kardToPlayer = StateMap.from<GameIndex, PublicKey>(
         GameIndex,
         PublicKey
     );
 
+    @state() public userActionsDone = StateMap.from<UserActionIndex, Bool>(
+        UserActionIndex,
+        Bool
+    );
+
     public override initGame(
         opponentReady: Bool,
         opponent: Option<QueueListItem>
     ): UInt64 {
-        let newId = this.lastGameId.get().orElse(UInt64.from(1));
+        let newId = this.lastGameId.get().orElse(UInt64.from(0));
         this.lastGameId.set(newId.add(1));
 
         let opp = Provable.if(
@@ -138,6 +145,7 @@ export class Poker extends MatchMaker {
         );
     }
 
+    // Can be made parallel
     @runtimeMethod()
     public setup(gameId: UInt64, shuffleProof: ShuffleProof) {
         const sessionSender = this.sessions.get(this.transaction.sender);
@@ -165,9 +173,48 @@ export class Poker extends MatchMaker {
         game.nextTurn();
         game.status = Provable.if(
             game.curPlayerIndex.equals(UInt64.from(0)), // turn returned to first player
-            UInt64.from(GameStatus.GAME),
+            UInt64.from(GameStatus.INITIAL_OPEN),
             game.status
         );
+
+        this.games.set(gameId, game);
+    }
+
+    // Open 2 shared cards and all cards of oponents
+    @runtimeMethod()
+    public initialOpen(gameId: UInt64, initOpenProof: InitialOpenProof) {
+        let game = forceOptionValue(this.games.get(gameId));
+        assert(game.status.equals(UInt64.from(GameStatus.INITIAL_OPEN)));
+
+        const sessionSender = this.sessions.get(this.transaction.sender);
+        const sender = Provable.if(
+            sessionSender.isSome,
+            sessionSender.value,
+            this.transaction.sender
+        );
+
+        initOpenProof.verify();
+
+        // Check that cards are the same
+        assert(initOpenProof.publicInput.deck.equals(game.deck));
+
+        // Check that this user has not done this already
+        let uii = new UserActionIndex({
+            gameId,
+            user: sender,
+            phase: game.status,
+        });
+
+        assert(this.userActionsDone.get(uii).isSome.not());
+        this.userActionsDone.set(uii, Bool(true));
+
+        const decryptedValues = initOpenProof.publicOutput.decryptedValues;
+
+        for (let i = 0; i < POKER_DECK_SIZE; i++) {
+            game.deck.cards[i].value[2] = game.deck.cards[i].value[2].add(
+                decryptedValues[i]
+            );
+        }
 
         this.games.set(gameId, game);
     }
@@ -192,6 +239,7 @@ export class Poker extends MatchMaker {
         game.nextTurn();
     }
 
+    // Do not check for recall.
     @runtimeMethod()
     public decryptCard(
         gameId: UInt64,

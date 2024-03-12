@@ -230,6 +230,7 @@ export class EncryptedDeck extends Struct({
 
 export enum GameStatus {
     SETUP,
+    INITIAL_OPEN,
     GAME,
 }
 
@@ -257,4 +258,10 @@ export class GameInfo extends Struct({
 export class GameIndex extends Struct({
     gameId: UInt64,
     index: UInt64,
+}) {}
+
+export class UserActionIndex extends Struct({
+    gameId: UInt64,
+    user: PublicKey,
+    phase: UInt64,
 }) {}

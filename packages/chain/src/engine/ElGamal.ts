@@ -17,11 +17,11 @@ export const encrypt = (
     m: [Group, Group, Group],
     r: Field
 ): [Group, Group, Group] => {
-    let m0Add = Group.generator.scale(+r.toString());
+    let m0Add = Group.generator.scale(+r.toString()); // TODO How to scale fields?
     let m1Add = pk.toGroup().scale(+r.toString());
 
     let newM: [Group, Group, Group] = [
-        m0Add.add(m[0]), // TODO How to scale fields?
+        m0Add.add(m[0]),
         m1Add.add(m[1]),
         Group.zero,
     ];
