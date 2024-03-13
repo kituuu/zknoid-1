@@ -1,6 +1,6 @@
 'use client';
 
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { GameView } from './GameView';
 import Link from 'next/link';
 import { useNetworkStore } from '@/lib/stores/network';
@@ -20,6 +20,7 @@ import { PublicKey, UInt64 } from 'o1js';
 import { usePokerWorkerClientStore } from '../stores/pokerWorker';
 import { useRegisterWorkerClient } from '@/lib/stores/workerClient';
 import { EncryptedCard, GameStatus } from 'zknoid-chain-dev';
+import { decryptOne } from 'zknoid-chain-dev/dist/src/engine/ElGamal';
 
 enum GameState {
   NotStarted,
@@ -37,6 +38,8 @@ export default function PokerPage({
 }) {
   const [gameState, setGameState] = useState(GameState.NotStarted);
   const client = useContext(AppChainClientContext);
+
+  let initialSended = useRef(false);
 
   if (!client) {
     throw Error('Context app chain client is not set');
@@ -84,6 +87,14 @@ export default function PokerPage({
       matchQueue.gameInfo?.status == GameStatus.SETUP
     ) {
       encryptAll();
+    }
+
+    if (
+      !initialSended.current &&
+      matchQueue.gameInfo?.status == GameStatus.INITIAL_OPEN
+    ) {
+      initialSended.current = true;
+      proveInitial();
     }
   }, [gameState, matchQueue.gameInfo?.nextUser]);
 
@@ -153,6 +164,27 @@ export default function PokerPage({
         UInt64.from(cardId),
         decryptProof,
       );
+    });
+
+    setLoading(true);
+
+    tx.transaction = tx.transaction?.sign(sessionPrivateKey);
+    await tx.send();
+  };
+
+  const proveInitial = async () => {
+    let pokerWorkerClient = await workerClientStore.start();
+
+    const initalProof = await pokerWorkerClient.proveInitial(
+      matchQueue.gameInfo!.contractDeck,
+      sessionPrivateKey,
+      matchQueue.gameInfo?.selfIndex!,
+    );
+
+    const poker = client.runtime.resolve('Poker');
+
+    const tx = await client.transaction(sessionPublicKey, () => {
+      poker.initialOpen(UInt64.from(matchQueue.activeGameId), initalProof);
     });
 
     setLoading(true);

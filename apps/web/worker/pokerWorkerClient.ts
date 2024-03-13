@@ -14,7 +14,10 @@ import {
 } from 'zknoid-chain-dev';
 import { GameRecordProof } from 'zknoid-chain';
 import { ShuffleProof } from 'zknoid-chain-dev/dist/src/poker/ShuffleProof';
-import { DecryptProof } from 'zknoid-chain-dev/dist/src/poker/DecryptProof';
+import {
+  DecryptProof,
+  InitialOpenProof,
+} from 'zknoid-chain-dev/dist/src/poker/DecryptProof';
 
 export default class PokerWorkerClient {
   // loadContracts() {
@@ -67,6 +70,18 @@ export default class PokerWorkerClient {
     });
     console.log('Restoring', result);
     const restoredProof = DecryptProof.fromJSON(result);
+
+    return restoredProof;
+  }
+
+  async proveInitial(deck: EncryptedDeck, pk: PrivateKey, playerIndex: number) {
+    const result = await this._call('proveInitial', {
+      deckJSON: deck.toJSONString(),
+      pkBase58: pk.toBase58(),
+      playerIndex: playerIndex.toString(),
+    });
+    console.log('Restoring', result);
+    const restoredProof = InitialOpenProof.fromJSON(result);
 
     return restoredProof;
   }

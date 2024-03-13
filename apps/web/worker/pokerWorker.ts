@@ -5,7 +5,7 @@ import { mockProof } from '@/lib/utils';
 import { GetServerSideProps } from 'next';
 import { Mina } from 'o1js016';
 
-import { Field as Field014, PrivateKey, PublicKey } from 'o1js';
+import { Field as Field014, PrivateKey, PublicKey, UInt64 } from 'o1js';
 import {
   checkMapGeneration,
   checkGameRecord,
@@ -32,7 +32,10 @@ import {
 import {
   DecryptProof,
   DecryptProofPublicInput,
+  InitialOpenProof,
+  InitialOpenPublicInput,
   proveDecrypt,
+  proveInitialOpen,
 } from 'zknoid-chain-dev/dist/src/poker/DecryptProof';
 import { randomBytes } from 'crypto';
 
@@ -164,6 +167,32 @@ const functions = {
     );
 
     return decryptProof.toJSON();
+  },
+
+  proveInitial: async (args: {
+    deckJSON: any;
+    pkBase58: any;
+    playerIndex: any;
+  }) => {
+    console.log('Prove initial started');
+    let deck = EncryptedDeck.fromJSONString(args.deckJSON);
+    let privateKey: PrivateKey = PrivateKey.fromBase58(args.pkBase58);
+    let playerIndex = UInt64.from(args.playerIndex);
+
+    // @ts-ignore
+    let publicInput = new InitialOpenPublicInput({
+      deck,
+      playerIndex,
+    });
+
+    let publicOutput = proveInitialOpen(publicInput, privateKey);
+    const initalOpenProve = await mockProof(
+      publicOutput,
+      InitialOpenProof,
+      publicInput,
+    );
+
+    return initalOpenProve.toJSON();
   },
 };
 

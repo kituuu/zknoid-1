@@ -51,7 +51,7 @@ export class InitialOpenPublicOutput extends Struct({
     decryptedValues: Provable.Array(Group, POKER_DECK_SIZE),
 }) {}
 
-const proveInitialOpen = (
+export const proveInitialOpen = (
     publicInput: InitialOpenPublicInput,
     pk: PrivateKey
 ): InitialOpenPublicOutput => {
@@ -70,6 +70,11 @@ const proveInitialOpen = (
             curPos.equals(publicInput.playerIndex),
             Group.zero,
             decryptOne(pk, publicInput.deck.cards[5 + 2 * i].value[0])
+        );
+        decryptedValues[5 + 2 * i + 1] = Provable.if(
+            curPos.equals(publicInput.playerIndex),
+            Group.zero,
+            decryptOne(pk, publicInput.deck.cards[5 + 2 * i + 1].value[0])
         );
     }
 

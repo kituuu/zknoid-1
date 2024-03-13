@@ -1,6 +1,6 @@
-import { create } from 'zustand';
+import { create, useStore } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { Group, PublicKey, UInt32, UInt64 } from 'o1js';
+import { Group, PrivateKey, PublicKey, UInt32, UInt64 } from 'o1js';
 import { useContext, useEffect } from 'react';
 import { useProtokitChainStore } from '@/lib/stores/protokitChain';
 import { useNetworkStore } from '@/lib/stores/network';
@@ -13,6 +13,8 @@ import {
   EncryptedDeck,
   GameIndex,
 } from 'zknoid-chain-dev/dist/src/poker/types';
+import { decryptOne } from 'zknoid-chain-dev/dist/src/engine/ElGamal';
+import { useSessionKeyStore } from '@/lib/stores/sessionKeyStorage';
 
 export interface ICard {
   value: [Group, Group];
@@ -23,6 +25,7 @@ export interface IGameInfo {
   status: number;
   gameId: bigint;
   contractDeck: EncryptedDeck;
+  contractDeckDecrypted: EncryptedDeck;
   deck: ICard[];
   nextUser: PublicKey;
   agrigatedPubKey: PublicKey;
@@ -46,11 +49,38 @@ export interface MatchQueueState {
     client: ClientAppChain<typeof pokerConfig.runtimeModules>,
     blockHeight: number,
     address: PublicKey,
+    sessionPrivateKey: PrivateKey,
   ) => Promise<void>;
   resetLastGameState: () => void;
 }
 
 const PENDING_BLOCKS_NUM = UInt64.from(5);
+
+const decryptOwnCards = (
+  initialDeck: EncryptedDeck,
+  selfIndex: number,
+  privateKey: PrivateKey,
+): EncryptedDeck => {
+  console.log('Decrypt own cards');
+
+  let deck = EncryptedDeck.fromJSONString(initialDeck.toJSONString());
+
+  for (let i = 0; i < 2; i++) {
+    let cardIndex = 5 + 2 * selfIndex + i;
+    let curCard = deck.cards[cardIndex];
+
+    if (+curCard.numOfEncryption.toString() == 1) {
+      console.log(deck.cards[cardIndex].value);
+      deck.cards[cardIndex].value[2] = curCard.value[2].add(
+        decryptOne(privateKey, curCard.value[0]),
+      );
+      deck.cards[cardIndex].numOfEncryption =
+        deck.cards[cardIndex].numOfEncryption.sub(1);
+    }
+  }
+
+  return deck;
+};
 
 export const usePokerMatchQueueStore = create<
   MatchQueueState,
@@ -95,6 +125,7 @@ export const usePokerMatchQueueStore = create<
       client: ClientAppChain<typeof pokerConfig.runtimeModules>,
       blockHeight: number,
       address: PublicKey,
+      sessionPrivateKey: PrivateKey,
     ) {
       set((state) => {
         state.loading = true;
@@ -177,6 +208,15 @@ export const usePokerMatchQueueStore = create<
             selfIndex = i;
           }
         }
+
+        // Decrypt own cards
+        let contractDeck = gameInfo.deck;
+        let contractDeckDecrypted = decryptOwnCards(
+          contractDeck,
+          selfIndex,
+          sessionPrivateKey,
+        );
+
         // const currentUserIndex = address
         //   .equals(gameInfo.player1 as PublicKey)
         //   .toBoolean()
@@ -192,7 +232,8 @@ export const usePokerMatchQueueStore = create<
           state.gameInfo = {
             status,
             gameId: activeGameId.toBigInt(),
-            contractDeck: gameInfo.deck,
+            contractDeck,
+            contractDeckDecrypted,
             deck,
             nextUser,
             agrigatedPubKey,
@@ -220,6 +261,9 @@ export const useObservePokerMatchQueue = () => {
   const client = useContext<
     ClientAppChain<typeof pokerConfig.runtimeModules> | undefined
   >(AppChainClientContext);
+  const sessionPrivateKey = useStore(useSessionKeyStore, (state) =>
+    state.getSessionKey(),
+  );
 
   useEffect(() => {
     if (!network.walletConnected) {
@@ -235,6 +279,7 @@ export const useObservePokerMatchQueue = () => {
       client,
       parseInt(chain.block?.height ?? '0'),
       PublicKey.fromBase58(network.address!),
+      sessionPrivateKey,
     );
   }, [chain.block?.height, network.walletConnected]);
 };

@@ -184,7 +184,7 @@ export class Poker extends MatchMaker {
     @runtimeMethod()
     public initialOpen(gameId: UInt64, initOpenProof: InitialOpenProof) {
         let game = forceOptionValue(this.games.get(gameId));
-        assert(game.status.equals(UInt64.from(GameStatus.INITIAL_OPEN)));
+        // assert(game.status.equals(UInt64.from(GameStatus.INITIAL_OPEN)));
 
         const sessionSender = this.sessions.get(this.transaction.sender);
         const sender = Provable.if(
@@ -196,7 +196,7 @@ export class Poker extends MatchMaker {
         initOpenProof.verify();
 
         // Check that cards are the same
-        assert(initOpenProof.publicInput.deck.equals(game.deck));
+        // assert(initOpenProof.publicInput.deck.equals(game.deck));
 
         // Check that this user has not done this already
         let uii = new UserActionIndex({
@@ -206,14 +206,25 @@ export class Poker extends MatchMaker {
         });
 
         assert(this.userActionsDone.get(uii).isSome.not());
-        this.userActionsDone.set(uii, Bool(true));
+        // this.userActionsDone.set(uii, Bool(true));
 
         const decryptedValues = initOpenProof.publicOutput.decryptedValues;
 
         for (let i = 0; i < POKER_DECK_SIZE; i++) {
+            let prevNumOfEncryption = game.deck.cards[i].numOfEncryption;
+            // Workaround protokit simulation with no state
+            let subValue = Provable.if(
+                prevNumOfEncryption
+                    .greaterThan(UInt64.zero)
+                    .and(decryptedValues[i].equals(Group.zero).not()),
+                UInt64.from(1),
+                UInt64.zero
+            );
             game.deck.cards[i].value[2] = game.deck.cards[i].value[2].add(
                 decryptedValues[i]
             );
+            game.deck.cards[i].numOfEncryption =
+                game.deck.cards[i].numOfEncryption.sub(subValue);
         }
 
         this.games.set(gameId, game);

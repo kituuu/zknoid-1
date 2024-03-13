@@ -105,12 +105,12 @@ export const GameView = (props: IGameViewProps) => {
     }
 
     let [closedCards, ownCards, openCards] = sortEncryptedCards(
-      props.gameInfo.contractDeck,
+      props.gameInfo.contractDeckDecrypted,
     );
     setOpenCards(openCards);
     setOwnCards(ownCards);
     setClosedCards(closedCards);
-  }, [props.gameInfo?.contractDeck]);
+  }, [props.gameInfo?.contractDeckDecrypted]);
 
   return (
     <div className="flex w-full flex-grow flex-col">
@@ -122,16 +122,21 @@ export const GameView = (props: IGameViewProps) => {
 
       <div className="flex flex-grow flex-col">
         <div className="width h-40 w-full flex-none">
-          {props.gameInfo?.contractDeck &&
+          {props.gameInfo?.contractDeckDecrypted &&
             [...Array(props.gameInfo?.players).keys()]
               .filter((elem) => elem != props.gameInfo?.selfIndex)
               .map((index) =>
-                getPlayerCardsDiv(props.gameInfo?.contractDeck!, index),
+                getPlayerCardsDiv(
+                  props.gameInfo?.contractDeckDecrypted!,
+                  index,
+                ),
               )}
         </div>
         <div className="flex w-full flex-grow items-center justify-center">
           <div className="flex justify-center gap-5">
-            {props.gameInfo?.contractDeck.cards.slice(0, 5).map(anyCardToDiv)}
+            {props.gameInfo?.contractDeckDecrypted.cards
+              .slice(0, 5)
+              .map(anyCardToDiv)}
 
             {/* {openCards.slice(0, 4).map(([card]) => {
               return cardToDiv(card);
@@ -151,9 +156,9 @@ export const GameView = (props: IGameViewProps) => {
           </div>
         </div>
         <div className="h-40 w-full flex-none justify-center">
-          {props.gameInfo?.contractDeck &&
+          {props.gameInfo?.contractDeckDecrypted &&
             getPlayerCardsDiv(
-              props.gameInfo?.contractDeck,
+              props.gameInfo?.contractDeckDecrypted,
               props.gameInfo?.selfIndex,
             )}
         </div>
