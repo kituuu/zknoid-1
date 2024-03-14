@@ -64,13 +64,18 @@ export const defaultGames: IGame[] = [
     popularity: 50,
   },
   {
-    id: 'Poker',
+    id: 'poker',
     logo: '/poker.webp',
+    rating: 666,
     name: 'Poker card game',
     description:
       "Poker is comparing card game in which players wager over which hand is best according to that specific game's rules.",
-    tags: ['L2 game', 'multiplayer', 'card games'],
+    genre: ZkNoidGameGenre.BoardGames,
+    features: [ZkNoidGameFeature.Multiplayer],
     defaultPage: 'global',
     active: true,
+    isReleased: false,
+    releaseDate: new Date(2024, 0, 1),
+    popularity: 50,
   },
 ];

@@ -84,21 +84,21 @@ export class Poker extends MatchMaker {
       opponent.isSome,
       this.userToSession
         .get(opponent.value.userAddress)
-        .orElse(this.transaction.sender),
-      this.transaction.sender, // Workaround. PublicKey.zero cannot be transformed to Group elem
+        .orElse(this.transaction.sender.value),
+      this.transaction.sender.value, // Workaround. PublicKey.zero cannot be transformed to Group elem
     );
 
     assert(
       this.userToSession
-        .get(this.transaction.sender)
+        .get(this.transaction.sender.value)
         .value.equals(PublicKey.empty())
         .not(),
     );
 
     let pubKeyList = [
       this.userToSession
-        .get(this.transaction.sender)
-        .orElse(this.transaction.sender),
+        .get(this.transaction.sender.value)
+        .orElse(this.transaction.sender.value),
       opp,
     ];
 
@@ -118,7 +118,7 @@ export class Poker extends MatchMaker {
     );
 
     /// #TODO Transform to provable
-    let players = [opponent.value.userAddress, this.transaction.sender];
+    let players = [opponent.value.userAddress, this.transaction.sender.value];
 
     for (let i = 0; i < players.length; i++) {
       this.players.set(
@@ -145,11 +145,11 @@ export class Poker extends MatchMaker {
   // Can be made parallel
   @runtimeMethod()
   public setup(gameId: UInt64, shuffleProof: ShuffleProof) {
-    const sessionSender = this.sessions.get(this.transaction.sender);
+    const sessionSender = this.sessions.get(this.transaction.sender.value);
     const sender = Provable.if(
       sessionSender.isSome,
       sessionSender.value,
-      this.transaction.sender,
+      this.transaction.sender.value,
     );
 
     let game = forceOptionValue(this.games.get(gameId));
@@ -183,11 +183,11 @@ export class Poker extends MatchMaker {
     let game = forceOptionValue(this.games.get(gameId));
     // assert(game.status.equals(UInt64.from(GameStatus.INITIAL_OPEN)));
 
-    const sessionSender = this.sessions.get(this.transaction.sender);
+    const sessionSender = this.sessions.get(this.transaction.sender.value);
     const sender = Provable.if(
       sessionSender.isSome,
       sessionSender.value,
-      this.transaction.sender,
+      this.transaction.sender.value,
     );
 
     initOpenProof.verify();
@@ -233,14 +233,14 @@ export class Poker extends MatchMaker {
     let currentPlayer = this.getUserByIndex(gameId, game.curPlayerIndex);
 
     // Check if right player runing setup
-    assert(currentPlayer.equals(this.transaction.sender));
+    assert(currentPlayer.equals(this.transaction.sender.value));
 
     this.kardToPlayer.set(
       new GameIndex({
         gameId,
         index: game.lastCardIndex,
       }),
-      this.transaction.sender,
+      this.transaction.sender.value,
     );
 
     game.lastCardIndex = game.lastCardIndex.add(1);

@@ -5,7 +5,6 @@ import { GameView } from './GameView';
 import Link from 'next/link';
 import { useNetworkStore } from '@/lib/stores/network';
 import { useMinaBridge } from '@/lib/stores/protokitBalances';
-import { walletInstalled } from '@/lib/utils';
 import { useStore } from 'zustand';
 import GamePage from '@/components/framework/GamePage';
 import AppChainClientContext from '@/lib/contexts/AppChainClientContext';
@@ -21,6 +20,7 @@ import { usePokerWorkerClientStore } from '../stores/pokerWorker';
 import { useRegisterWorkerClient } from '@/lib/stores/workerClient';
 import { EncryptedCard, GameStatus } from 'zknoid-chain-dev';
 import { decryptOne } from 'zknoid-chain-dev/dist/src/engine/ElGamal';
+import { walletInstalled } from '@/lib/helpers';
 
 enum GameState {
   NotStarted,
@@ -52,10 +52,10 @@ export default function PokerPage({
   const networkStore = useNetworkStore();
   const matchQueue = usePokerMatchQueueStore();
   const sessionPublicKey = useStore(useSessionKeyStore, (state) =>
-    state.getSessionKey(),
+    state.getSessionKey()
   ).toPublicKey();
   const sessionPrivateKey = useStore(useSessionKeyStore, (state) =>
-    state.getSessionKey(),
+    state.getSessionKey()
   );
 
   // useRegisterWorkerClient();
@@ -112,9 +112,9 @@ export default function PokerPage({
       () => {
         poker.register(
           sessionPublicKey,
-          UInt64.from(Math.round(Date.now() / 1000)),
+          UInt64.from(Math.round(Date.now() / 1000))
         );
-      },
+      }
     );
 
     await tx.sign();
@@ -128,7 +128,7 @@ export default function PokerPage({
 
     const shuffleProof = await pokerWorkerClient.proveShuffle(
       matchQueue.gameInfo!.contractDeck,
-      matchQueue.gameInfo!.agrigatedPubKey,
+      matchQueue.gameInfo!.agrigatedPubKey
     );
 
     const poker = client.runtime.resolve('Poker');
@@ -153,7 +153,7 @@ export default function PokerPage({
 
     const decryptProof = await pokerWorkerClient.proveDecrypt(
       card,
-      sessionPrivateKey,
+      sessionPrivateKey
     );
 
     const poker = client.runtime.resolve('Poker');
@@ -162,7 +162,7 @@ export default function PokerPage({
       poker.decryptCard(
         UInt64.from(matchQueue.activeGameId),
         UInt64.from(cardId),
-        decryptProof,
+        decryptProof
       );
     });
 
@@ -178,7 +178,7 @@ export default function PokerPage({
     const initalProof = await pokerWorkerClient.proveInitial(
       matchQueue.gameInfo!.contractDeck,
       sessionPrivateKey,
-      matchQueue.gameInfo?.selfIndex!,
+      matchQueue.gameInfo?.selfIndex!
     );
 
     const poker = client.runtime.resolve('Poker');

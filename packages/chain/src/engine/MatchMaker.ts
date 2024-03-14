@@ -131,7 +131,7 @@ export class MatchMaker extends RuntimeModule<MatchMakerConfig> {
 
     // Registering player session key
     this.sessions.set(sessionKey, this.transaction.sender.value);
-    this.userToSession.set(this.transaction.sender, sessionKey);
+    this.userToSession.set(this.transaction.sender.value, sessionKey);
     const roundId = this.network.block.height.div(PENDING_BLOCKS_NUM);
 
     // User can't re-register in round queue if already registered
