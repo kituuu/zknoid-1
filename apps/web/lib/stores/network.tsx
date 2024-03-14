@@ -1,12 +1,9 @@
-'use client'
-import { NETWORKS, Network } from "@/app/constants/networks";
-import { PendingTransaction } from "@proto-kit/sequencer";
-import { Mina } from "o1js";
-import { client } from "zknoid-chain-dev";
-import { create } from "zustand";
-import { immer } from "zustand/middleware/immer";
+'use client';
+import { PendingTransaction } from '@proto-kit/sequencer';
+import { create } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
 
-export type Client = typeof client;
+import { NETWORKS, Network } from '@/app/constants/networks';
 
 export interface NetworkState {
   minaNetwork: Network | undefined;
@@ -24,28 +21,32 @@ export interface NetworkState {
   removePendingL2Transaction: (pendingTransaction: PendingTransaction) => void;
 }
 
-export const useNetworkStore = create<NetworkState, [["zustand/immer", never]]>(
+export const useNetworkStore = create<NetworkState, [['zustand/immer', never]]>(
   immer((set) => ({
     walletConnected: false,
     protokitClientStarted: false,
     minaNetwork: undefined,
     onProtokitClientStarted() {
       set({
-        protokitClientStarted: true
+        protokitClientStarted: true,
       });
     },
     async setNetwork(chainId: string) {
+      const O1js = await import('o1js');
+
       set((state) => {
-        const minaNetwork = NETWORKS.find(x => x.chainId == chainId);
+        const minaNetwork = NETWORKS.find((x) => x.chainId == chainId);
         state.minaNetwork = minaNetwork;
         if (minaNetwork) {
-          const Network = Mina.Network(minaNetwork?.graphql);
-          Mina.setActiveInstance(Network);  
+          const Network = O1js.Mina.Network(minaNetwork?.graphql);
+          O1js.Mina.setActiveInstance(Network);
         }
       });
     },
     address: undefined,
     async onWalletConnected(address: string | undefined) {
+      const network = await (window as any).mina.requestNetwork();
+      this.setNetwork(network.chainId);
       set((state) => {
         state.address = address;
         state.walletConnected = true;
@@ -53,9 +54,7 @@ export const useNetworkStore = create<NetworkState, [["zustand/immer", never]]>(
     },
     async connectWallet() {
       const accounts = await (window as any).mina.requestAccounts();
-      set((state) => {
-        state.address = accounts[0];
-      });
+      this.onWalletConnected(accounts[0]);
     },
     walletInstalled() {
       return typeof mina !== 'undefined';
@@ -69,10 +68,14 @@ export const useNetworkStore = create<NetworkState, [["zustand/immer", never]]>(
     },
     removePendingL2Transaction(pendingTransaction) {
       set((state) => {
-        state.pendingL2Transactions = state.pendingL2Transactions.filter((tx) => {
-          return tx.hash().toString() !== pendingTransaction.hash().toString();
-        });
+        state.pendingL2Transactions = state.pendingL2Transactions.filter(
+          (tx) => {
+            return (
+              tx.hash().toString() !== pendingTransaction.hash().toString()
+            );
+          }
+        );
       });
     },
-  })),
+  }))
 );

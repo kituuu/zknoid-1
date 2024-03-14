@@ -12,6 +12,7 @@ import {
 import AppChainClientContext from '@/lib/contexts/AppChainClientContext';
 import GamePage from '@/components/framework/GamePage';
 import { arkanoidConfig } from '../config';
+import { formatDecimals } from '@/lib/utils';
 
 const timeStampToStringDate = (timeStamp: number): string => {
   var date = new Date(timeStamp);
@@ -24,12 +25,12 @@ export default function ArkanoidCompetitionsListPage() {
   const networkStore = useNetworkStore();
   const compStore = useArkanoidCompetitionsStore();
 
-  useObserveArkanoidCompetitions()
+  useObserveArkanoidCompetitions();
 
   const client = useContext(AppChainClientContext);
 
   if (!client) {
-      throw Error('Context app chain client is not set');
+    throw Error('Context app chain client is not set');
   }
 
   const register = async (competitionId: number) => {
@@ -39,7 +40,21 @@ export default function ArkanoidCompetitionsListPage() {
       PublicKey.fromBase58(networkStore.address!),
       () => {
         gameHub.register(UInt64.from(competitionId));
-      },
+      }
+    );
+
+    await tx.sign();
+    await tx.send();
+  };
+
+  const getReward = async (competitionId: number) => {
+    const gameHub = client.runtime.resolve('ArkanoidGameHub');
+
+    const tx = await client.transaction(
+      PublicKey.fromBase58(networkStore.address!),
+      () => {
+        gameHub.getReward(UInt64.from(competitionId));
+      }
     );
 
     await tx.sign();
@@ -58,7 +73,7 @@ export default function ArkanoidCompetitionsListPage() {
         href={`/games/arkanoid/[competitionId]`}
         as={`/games/arkanoid/${c.competitionId}`}
       >
-        <div className="flex content-center items-center justify-center rounded border-solid bg-blue-500 px-6 py-4 font-bold text-white">
+        <div className="flex cursor-pointer content-center items-center justify-center rounded border-solid bg-blue-500 px-6 py-4 font-bold text-white">
           Play
         </div>
       </Link>
@@ -66,7 +81,7 @@ export default function ArkanoidCompetitionsListPage() {
 
     let registerButton = (
       <div
-        className="flex content-center items-center justify-center rounded border-solid bg-blue-500 px-6 py-4 font-bold text-white"
+        className="flex cursor-pointer content-center items-center justify-center rounded border-solid bg-blue-500 px-6 py-4 font-bold text-white"
         onClick={() => register(c.competitionId)}
       >
         Register
@@ -75,15 +90,25 @@ export default function ArkanoidCompetitionsListPage() {
 
     const info = (text: string) => {
       return (
-        <div className="flex content-center items-center justify-center rounded border-solid bg-gray-500 px-6 py-4 font-bold text-white">
+        <div className="flex cursor-pointer content-center items-center justify-center rounded border-solid bg-gray-500 px-6 py-4 font-bold text-white">
           {text}
         </div>
       );
     };
+
+    let getRewardButton = (
+      <div
+        className="flex cursor-pointer content-center items-center justify-center rounded border-solid bg-blue-500 px-6 py-4 font-bold text-white"
+        onClick={() => getReward(c.competitionId)}
+      >
+        Get Reward
+      </div>
+    );
+
     let curTime = Date.now();
 
     if (c.competitionEndTime < curTime) {
-      return info('Competition ended');
+      return getRewardButton;
     }
 
     if (c.prereg && !c.registered) {
@@ -107,13 +132,13 @@ export default function ArkanoidCompetitionsListPage() {
     <GamePage gameConfig={arkanoidConfig}>
       <div className="flex min-h-screen w-screen flex-col items-center py-10">
         <Link href={`/games/arkanoid/new-competition`} className="p-5">
-          <div className="h-50 w-100 rounded border-solid bg-white p-5">
+          <div className="h-50 w-100 rounded border-2 border-solid border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark">
             Create competition{' '}
           </div>
         </Link>
         <h1> Arkanoid competitions list </h1>
-        <table className="min-w-max text-left">
-          <thead className="bg-gray-300 font-semibold">
+        <table className="min-w-max border border-left-accent text-left">
+          <thead className="bg-[#252525] font-semibold">
             <tr>
               <th className="px-6 py-3"> Name </th>
               <th className="px-6 py-3"> Seed </th>
@@ -132,7 +157,8 @@ export default function ArkanoidCompetitionsListPage() {
             {compStore.competitions.map((c) => (
               <tr
                 className={
-                  'border-b ' + (c.funds > 0 ? 'bg-amber-100' : 'bg-white')
+                  'border-y border-left-accent ' +
+                  (c.funds > 0 ? 'bg-[#252525]' : 'bg-[#252525]')
                 }
                 key={c.competitionId}
               >
@@ -164,8 +190,10 @@ export default function ArkanoidCompetitionsListPage() {
                 <td className="px-6 py-4">
                   {timeStampToStringDate(c.competitionEndTime)}
                 </td>
-                <td className="px-6 py-4">{c.funds}</td>
-                <td className="px-6 py-4">{c.participationFee}</td>
+                <td className="px-6 py-4">{formatDecimals(c.funds)}</td>
+                <td className="px-6 py-4">
+                  {formatDecimals(c.participationFee)}
+                </td>
                 <td>
                   {competitionButton(c)}
                   {/* <Link href={`/games/arkanoid/${c.competitionId}`}>

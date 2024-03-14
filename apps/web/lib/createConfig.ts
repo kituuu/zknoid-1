@@ -1,6 +1,8 @@
 import { RuntimeModulesRecord } from '@proto-kit/module';
 import { ClientAppChain } from 'zknoid-chain-dev';
 import { createStore } from 'zustand';
+import { ZkNoidGameFeature, ZkNoidGameGenre } from './platform/game_tags';
+import { buildClient } from './utils';
 
 export type ZkNoidGameConfig<
   RuntimeModules extends RuntimeModulesRecord = RuntimeModulesRecord,
@@ -8,7 +10,13 @@ export type ZkNoidGameConfig<
   id: string;
   name: string;
   description: string;
+  genre: ZkNoidGameGenre;
+  features: ZkNoidGameFeature[];
   image: string;
+  rating: number;
+  isReleased: boolean;
+  releaseDate: Date;
+  popularity: number;
   runtimeModules: RuntimeModules;
   page: ({ params }: { params: { competitionId: string } }) => React.ReactNode;
   pageCompetitionsList?: () => React.ReactNode;
@@ -21,7 +29,13 @@ export function createZkNoidGameConfig<
   id: string;
   name: string;
   description: string;
+  genre: ZkNoidGameGenre;
+  features: ZkNoidGameFeature[];
   image: string;
+  rating: number;
+  isReleased: boolean;
+  releaseDate: Date;
+  popularity: number;
   runtimeModules: RuntimeModules;
   page: ({ params }: { params: { competitionId: string } }) => React.ReactNode;
   pageCompetitionsList?: () => React.ReactNode;
@@ -63,26 +77,7 @@ export function createConfig<
 
       console.log('Loaded modules', modules);
 
-      const client = ClientAppChain.fromRuntime({
-        modules,
-      });
-
-      client.configure({
-        Runtime: {
-          ArkanoidGameHub: {},
-          Balances: {},
-          RandzuLogic: {},
-          Poker: {},
-        },
-      });
-
-      client.configurePartial({
-        GraphqlClient: {
-          url:
-            process.env.NEXT_PUBLIC_PROTOKIT_URL ||
-            'http://127.0.0.1:8080/graphql',
-        },
-      });
+      const client = buildClient(modules);
 
       return client;
     },

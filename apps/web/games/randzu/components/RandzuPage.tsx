@@ -7,15 +7,24 @@ import Link from 'next/link';
 import { useNetworkStore } from '@/lib/stores/network';
 import { useMinaBridge } from '@/lib/stores/protokitBalances';
 import { randzuCompetitions } from '@/app/constants/randzuCompetitions';
-import { useObserveRandzuMatchQueue, useRandzuMatchQueueStore } from '@/games/randzu/stores/matchQueue';
-import { walletInstalled } from '@/lib/utils';
+import { useObserveRandzuMatchQueue } from '@/games/randzu/stores/matchQueue';
+import { walletInstalled } from '@/lib/helpers';
 import { useStore } from 'zustand';
 import { useSessionKeyStore } from '@/lib/stores/sessionKeyStorage';
-import { RandzuField, WinWitness } from 'zknoid-chain-dev';
+import {
+  ClientAppChain,
+  PENDING_BLOCKS_NUM_CONST,
+  RandzuField,
+  WinWitness,
+} from 'zknoid-chain-dev';
 import GamePage from '@/components/framework/GamePage';
 import { randzuConfig } from '../config';
 import AppChainClientContext from '@/lib/contexts/AppChainClientContext';
 import { getRandomEmoji } from '../utils';
+import { useMatchQueueStore } from '@/lib/stores/matchQueue';
+import { useProtokitChainStore } from '@/lib/stores/protokitChain';
+import { MOVE_TIMEOUT_IN_BLOCKS } from 'zknoid-chain-dev/dist/src/engine/MatchMaker';
+import { formatDecimals } from '@/lib/utils';
 
 enum GameState {
   NotStarted,
@@ -33,31 +42,40 @@ export default function RandzuPage({
 }) {
   const [gameState, setGameState] = useState(GameState.NotStarted);
   const competition = randzuCompetitions.find(
-    (x) => x.id == params.competitionId,
+    (x) => x.id == params.competitionId
   );
-  
-  const client = useContext(AppChainClientContext);
+
+  const client = useContext(AppChainClientContext) as ClientAppChain<
+    typeof randzuConfig.runtimeModules
+  >;
 
   if (!client) {
-      throw Error('Context app chain client is not set');
+    throw Error('Context app chain client is not set');
   }
 
-  useObserveRandzuMatchQueue();
-
   let [loading, setLoading] = useState(true);
-  let [loadingElement, setLoadingElement] = useState<{x: number, y: number} | undefined>({x: 0, y: 0});
+  let [loadingElement, setLoadingElement] = useState<
+    { x: number; y: number } | undefined
+  >({ x: 0, y: 0 });
 
   const networkStore = useNetworkStore();
-  const matchQueue = useRandzuMatchQueueStore();
-  const sessionPublicKey = useStore(useSessionKeyStore, (state) => state.getSessionKey()).toPublicKey();
-  const sessionPrivateKey = useStore(useSessionKeyStore, (state) => state.getSessionKey());
+  const matchQueue = useMatchQueueStore();
+  const sessionPublicKey = useStore(useSessionKeyStore, (state) =>
+    state.getSessionKey()
+  ).toPublicKey();
+  const sessionPrivateKey = useStore(useSessionKeyStore, (state) =>
+    state.getSessionKey()
+  );
+
+  useObserveRandzuMatchQueue();
+  const protokitChain = useProtokitChainStore();
 
   const bridge = useMinaBridge();
 
   const restart = () => {
     matchQueue.resetLastGameState();
     setGameState(GameState.NotStarted);
-  }
+  };
 
   const startGame = async () => {
     if (competition!.enteringPrice > 0) {
@@ -69,8 +87,11 @@ export default function RandzuPage({
     const tx = await client.transaction(
       PublicKey.fromBase58(networkStore.address!),
       () => {
-        randzuLogic.register(sessionPublicKey, UInt64.from(Math.round(Date.now() / 1000)));
-      },
+        randzuLogic.register(
+          sessionPublicKey,
+          UInt64.from(Math.round(Date.now() / 1000))
+        );
+      }
     );
 
     await tx.sign();
@@ -79,13 +100,45 @@ export default function RandzuPage({
     setGameState(GameState.MatchRegistration);
   };
 
+  const proveOpponentTimeout = async () => {
+    const randzuLogic = client.runtime.resolve('RandzuLogic');
+
+    const tx = await client.transaction(
+      PublicKey.fromBase58(networkStore.address!),
+      () => {
+        randzuLogic.proveOpponentTimeout(
+          UInt64.from(matchQueue.gameInfo!.gameId)
+        );
+      }
+    );
+
+    await tx.sign();
+    await tx.send();
+  };
+
+  const getWinnings = async () => {
+    const randzuLogic = client.runtime.resolve('RandzuLogic');
+
+    const tx = await client.transaction(
+      PublicKey.fromBase58(networkStore.address!),
+      () => {
+        randzuLogic.win(UInt64.from(matchQueue.gameInfo!.gameId));
+      }
+    );
+
+    await tx.sign();
+    await tx.send();
+  };
+
   const onCellClicked = async (x: number, y: number) => {
     if (!matchQueue.gameInfo?.isCurrentUserMove) return;
-    if (matchQueue.gameInfo.field[x][y] != 0) return;
+    if (matchQueue.gameInfo.field.value[x][y] != 0) return;
 
     const currentUserId = matchQueue.gameInfo.currentUserIndex + 1;
 
-    const updatedField = matchQueue.gameInfo.field.map(x => [...x]);
+    const updatedField = (matchQueue.gameInfo.field as RandzuField).value.map(
+      (x: UInt32[]) => x.map((x) => x.toBigint())
+    );
     updatedField[y][x] = matchQueue.gameInfo.currentUserIndex + 1;
 
     const randzuLogic = client.runtime.resolve('RandzuLogic');
@@ -94,13 +147,12 @@ export default function RandzuPage({
 
     const winWitness1 = updatedRandzuField.checkWin(currentUserId);
 
-    const tx = await client.transaction(
-      sessionPrivateKey.toPublicKey(),
-      () => {
-        randzuLogic.makeMove(
-          UInt64.from(matchQueue.gameInfo!.gameId), 
-          updatedRandzuField, 
-          winWitness1 ?? new WinWitness(
+    const tx = await client.transaction(sessionPrivateKey.toPublicKey(), () => {
+      randzuLogic.makeMove(
+        UInt64.from(matchQueue.gameInfo!.gameId),
+        updatedRandzuField,
+        winWitness1 ??
+          new WinWitness(
             // @ts-ignore
             {
               x: UInt32.from(0),
@@ -109,18 +161,18 @@ export default function RandzuPage({
               directionY: Int64.from(0),
             }
           )
-        );
-      },
-    );
+      );
+    });
 
     setLoading(true);
     setLoadingElement({
-      x, y
+      x,
+      y,
     });
 
     tx.transaction = tx.transaction?.sign(sessionPrivateKey);
     await tx.send();
-  }
+  };
 
   useEffect(() => {
     setLoading(false);
@@ -133,89 +185,115 @@ export default function RandzuPage({
     } else if (matchQueue.activeGameId) {
       setGameState(GameState.Active);
     } else {
-      if (matchQueue.lastGameState == 'win')
-        setGameState(GameState.Won);
-
-      if (matchQueue.lastGameState == 'lost')
-        setGameState(GameState.Lost);
+      if (matchQueue.lastGameState == 'win') setGameState(GameState.Won);
+      else if (matchQueue.lastGameState == 'lost') setGameState(GameState.Lost);
+      else setGameState(GameState.NotStarted);
     }
-
   }, [matchQueue.activeGameId, matchQueue.inQueue, matchQueue.lastGameState]);
-  
+
   return (
     <GamePage gameConfig={randzuConfig}>
       <main className="flex grow flex-col items-center gap-5 p-5">
         {networkStore.address ? (
           <div className="flex flex-col gap-5">
             {gameState == GameState.Won && (
-              <div>
-                {getRandomEmoji("happy")} You won!
-              </div>
+              <div>{getRandomEmoji('happy')} You won!</div>
             )}
             {gameState == GameState.Lost && (
-              <div>{getRandomEmoji("sad")} You lost!</div>
+              <div>{getRandomEmoji('sad')} You lost!</div>
             )}
 
             <div className="flex flex-row items-center justify-center gap-5">
               {(gameState == GameState.Won || gameState == GameState.Lost) && (
-                <div
-                  className="rounded-xl bg-slate-300 p-5 hover:bg-slate-400"
-                  onClick={() => restart()}
-                >
-                  Restart
+                <div>
+                  <div
+                    className="rounded-xl border-2 border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark"
+                    onClick={() => getWinnings()}
+                  >
+                    Get winnings
+                  </div>
+                  <div
+                    className="rounded-xl border-2 border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark"
+                    onClick={() => restart()}
+                  >
+                    Restart
+                  </div>
                 </div>
               )}
               {gameState == GameState.NotStarted && (
                 <div
-                  className="rounded-xl bg-slate-300 p-5 hover:bg-slate-400"
+                  className="rounded-xl border-2 border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark"
                   onClick={() => startGame()}
                 >
-                  Start for {competition?.enteringPrice} 🪙
+                  Start for{' '}
+                  {competition && formatDecimals(competition.enteringPrice)} 🪙
                 </div>
               )}
-              
             </div>
           </div>
-        ) : 
-          walletInstalled() ? (
-            <div
-              className="rounded-xl bg-slate-300 p-5"
-              onClick={async () => networkStore.connectWallet()}
-            >
-              Connect wallet
-            </div>
-          ) : (
-            <Link href="https://www.aurowallet.com/"
-              className="rounded-xl bg-slate-300 p-5"
-              rel="noopener noreferrer" target="_blank"
-            >
-                Install wallet
-            </Link>
-          )}
+        ) : walletInstalled() ? (
+          <div
+            className="rounded-xl border-2 border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark"
+            onClick={async () => networkStore.connectWallet()}
+          >
+            Connect wallet
+          </div>
+        ) : (
+          <Link
+            href="https://www.aurowallet.com/"
+            className="rounded-xl border-2 border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            Install wallet
+          </Link>
+        )}
 
         {gameState == GameState.MatchRegistration && (
-          <div>
-            Registering in the match pool 📝 ...
-          </div>
-        )} 
+          <div>Registering in the match pool 📝 ...</div>
+        )}
         {gameState == GameState.Matchmaking && (
           <div>
-            Searching for opponents 🔍 ...
+            Searching for opponents{' '}
+            {parseInt(protokitChain.block?.height ?? '0') %
+              PENDING_BLOCKS_NUM_CONST}{' '}
+            / {PENDING_BLOCKS_NUM_CONST}🔍 ...
           </div>
-        )} 
+        )}
         {gameState == GameState.Active && (
-          <div className='flex flex-col gap-2 items-center'>
+          <div className="flex flex-col items-center gap-2">
             <>Game started. </>
             Opponent: {matchQueue.gameInfo?.opponent.toBase58()}
-            {matchQueue.gameInfo?.isCurrentUserMove && !matchQueue.gameInfo?.winner && !loading && (<div>✅ Your turn. </div>)} 
-            {!matchQueue.gameInfo?.isCurrentUserMove && !matchQueue.gameInfo?.winner && !loading && (<div>✋ Opponent's turn. </div>)} 
-
-            {loading && (<div> ⏳ Transaction execution </div>)} 
-
-            {matchQueue.gameInfo?.winner && (<div> Winner: {matchQueue.gameInfo?.winner.toBase58()}. </div>)} 
-
+            {matchQueue.gameInfo?.isCurrentUserMove &&
+              !matchQueue.gameInfo?.winner &&
+              !loading && <div>✅ Your turn. </div>}
+            {!matchQueue.gameInfo?.isCurrentUserMove &&
+              !matchQueue.gameInfo?.winner &&
+              !loading && <div>✋ Opponent&apos;s turn. </div>}
+            {loading && <div> ⏳ Transaction execution </div>}
+            {matchQueue.gameInfo?.winner && (
+              <div> Winner: {matchQueue.gameInfo?.winner.toBase58()}. </div>
+            )}
+            {!matchQueue.gameInfo?.isCurrentUserMove &&
+              BigInt(protokitChain?.block?.height || '0') -
+                matchQueue.gameInfo?.lastMoveBlockHeight >
+                MOVE_TIMEOUT_IN_BLOCKS && (
+                <div className="flex flex-col items-center">
+                  <div>
+                    Opponent timeout {Number(protokitChain?.block?.height)}{' '}
+                    {' / '}
+                    {Number(matchQueue.gameInfo?.lastMoveBlockHeight)}
+                  </div>
+                  <div
+                    className="rounded-xl border-2 border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark"
+                    onClick={() => proveOpponentTimeout()}
+                  >
+                    Prove win
+                  </div>
+                </div>
+              )}
           </div>
-        )} 
+        )}
 
         <GameView
           gameInfo={matchQueue.gameInfo}
@@ -241,6 +319,6 @@ export default function RandzuPage({
           </div>
         </div>
       </main>
-      </GamePage>  
-    );
+    </GamePage>
+  );
 }

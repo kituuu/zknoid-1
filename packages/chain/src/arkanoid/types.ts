@@ -8,7 +8,6 @@ import {
   CircuitString,
   Field,
 } from 'o1js';
-
 import { CHUNK_LENGTH, GAME_LENGTH, MAX_BRICKS } from './constants';
 
 export class GameRecordKey extends Struct({
@@ -49,8 +48,8 @@ export class Competition extends Struct({
       preregEndTime: UInt64.from(preregEndTime),
       competitionStartTime: UInt64.from(competitionStartTime),
       competitionEndTime: UInt64.from(competitionEndTime),
-      funds: UInt64.from(funds),
-      participationFee: UInt64.from(participationFee),
+      funds: UInt64.from(funds).mul(10 ** 9),
+      participationFee: UInt64.from(participationFee).mul(10 ** 9),
     });
   }
 }

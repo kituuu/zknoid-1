@@ -1,6 +1,6 @@
-import { MatchMaker, QueueListItem } from '../engine/MatchMaker';
 import { state, runtimeMethod, runtimeModule } from '@proto-kit/module';
-import { Option, State, StateMap, assert } from '@proto-kit/protocol';
+import type { Option } from '@proto-kit/protocol';
+import { State, StateMap, assert } from '@proto-kit/protocol';
 import {
   PublicKey,
   Struct,
@@ -12,6 +12,8 @@ import {
   Field,
   Int64,
 } from 'o1js';
+import { DEFAULT_GAME_COST, MatchMaker } from '../engine/MatchMaker';
+import type { QueueListItem } from '../engine/MatchMaker';
 
 const RANDZU_FIELD_SIZE = 15;
 const CELLS_LINE_TO_WIN = 5;
@@ -85,7 +87,7 @@ export class RandzuField extends Struct({
               combo++;
           }
 
-          if (combo == CELLS_LINE_TO_WIN) {
+          if (combo === CELLS_LINE_TO_WIN) {
             return new WinWitness({
               x: UInt32.from(i),
               y: UInt32.from(j),
@@ -133,9 +135,9 @@ export class RandzuLogic extends MatchMaker {
     this.games.set(
       Provable.if(opponentReady, currentGameId, UInt64.from(0)),
       new GameInfo({
-        player1: this.transaction.sender,
+        player1: this.transaction.sender.value,
         player2: opponent.value.userAddress,
-        currentMoveUser: this.transaction.sender,
+        currentMoveUser: this.transaction.sender.value,
         lastMoveBlockHeight: this.network.block.height,
         field: RandzuField.from(
           Array(RANDZU_FIELD_SIZE).fill(Array(RANDZU_FIELD_SIZE).fill(0)),
@@ -145,17 +147,18 @@ export class RandzuLogic extends MatchMaker {
     );
 
     this.gamesNum.set(currentGameId);
+    this.gameFund.set(currentGameId, this.getParticipationPrice().mul(2));
 
     return currentGameId;
   }
 
   @runtimeMethod()
   public proveOpponentTimeout(gameId: UInt64): void {
-    const sessionSender = this.sessions.get(this.transaction.sender);
+    const sessionSender = this.sessions.get(this.transaction.sender.value);
     const sender = Provable.if(
       sessionSender.isSome,
       sessionSender.value,
-      this.transaction.sender,
+      this.transaction.sender.value,
     );
 
     const game = this.games.get(gameId);
@@ -187,11 +190,11 @@ export class RandzuLogic extends MatchMaker {
     newField: RandzuField,
     winWitness: WinWitness,
   ): void {
-    const sessionSender = this.sessions.get(this.transaction.sender);
+    const sessionSender = this.sessions.get(this.transaction.sender.value);
     const sender = Provable.if(
       sessionSender.isSome,
       sessionSender.value,
-      this.transaction.sender,
+      this.transaction.sender.value,
     );
 
     const game = this.games.get(gameId);
@@ -215,11 +218,11 @@ export class RandzuLogic extends MatchMaker {
       UInt32.from(2),
     );
 
-    let addedCellsNum = UInt64.from(0);
+    const addedCellsNum = UInt64.from(0);
     for (let i = 0; i < RANDZU_FIELD_SIZE; i++) {
       for (let j = 0; j < RANDZU_FIELD_SIZE; j++) {
-        let currentFieldCell = game.value.field.value[i][j];
-        let nextFieldCell = newField.value[i][j];
+        const currentFieldCell = game.value.field.value[i][j];
+        const nextFieldCell = newField.value[i][j];
 
         assert(
           Bool.or(
@@ -299,5 +302,12 @@ export class RandzuLogic extends MatchMaker {
       Provable.if(winProposed, game.value.player1, PublicKey.empty()),
       UInt64.from(0),
     );
+  }
+
+  @runtimeMethod()
+  public win(gameId: UInt64): void {
+    let game = this.games.get(gameId).value;
+    assert(game.winner.equals(PublicKey.empty()).not());
+    this.getFunds(gameId, game.winner);
   }
 }

@@ -5,17 +5,17 @@ import {
   runtimeMethod,
 } from '@proto-kit/module';
 import { State, StateMap, assert } from '@proto-kit/protocol';
-import { UInt64, PublicKey, Provable, Proof, Bool } from 'o1js';
+import type { Proof } from 'o1js';
+import { UInt64, PublicKey, Provable, Bool } from 'o1js';
+import { UInt64 as ProtoUInt64 } from '@proto-kit/library';
+import { inject } from 'tsyringe';
 import {
   Competition,
   GameRecordKey,
   LeaderboardIndex,
   LeaderboardScore,
 } from '../arkanoid/types';
-
 import { Balances } from '../framework/balances';
-
-import { inject } from 'tsyringe';
 
 export interface IScoreable {
   score: UInt64;
@@ -54,6 +54,11 @@ export class Gamehub<
   @state() public lastSeed = State.from<UInt64>(UInt64);
   @state() public lastUpdate = State.from<UInt64>(UInt64);
 
+  @state() public gotReward = StateMap.from<GameRecordKey, Bool>(
+    GameRecordKey,
+    Bool,
+  );
+
   public leaderboardSize = 10;
 
   public constructor(@inject('Balances') private balances: Balances) {
@@ -81,6 +86,11 @@ export class Gamehub<
     this.lastCompetitonId.set(
       this.lastCompetitonId.get().orElse(UInt64.from(0)).add(1),
     );
+
+    this.balances.transferTo(
+      PublicKey.empty(),
+      ProtoUInt64.from(competition.funds),
+    );
   }
 
   @runtimeMethod()
@@ -88,10 +98,12 @@ export class Gamehub<
     this.registrations.set(
       new GameRecordKey({
         competitionId,
-        player: this.transaction.sender,
+        player: this.transaction.sender.value,
       }),
       Bool(true),
     );
+
+    this.payCompetitionFee(competitionId, Bool(true));
   }
 
   /**
@@ -109,17 +121,20 @@ export class Gamehub<
 
     const gameKey = new GameRecordKey({
       competitionId,
-      player: this.transaction.sender,
+      player: this.transaction.sender.value,
     });
 
     // Check for registration
-    let registrationNeeded = this.competitions.get(competitionId).value.prereg;
-    let userRegistration = this.registrations.get(gameKey).value;
+    const registrationNeeded =
+      this.competitions.get(competitionId).value.prereg;
+    const userRegistration = this.registrations.get(gameKey).value;
 
     assert(registrationNeeded.not().or(userRegistration));
 
+    this.payCompetitionFee(competitionId, registrationNeeded.not());
+
     const currentScore = this.gameRecords.get(gameKey).value;
-    let newScore = gameRecordProof.publicOutput.score;
+    const newScore = gameRecordProof.publicOutput.score;
 
     if (currentScore < newScore) {
       // Do we need provable here?
@@ -163,9 +178,47 @@ export class Gamehub<
         looserKey,
         new LeaderboardScore({
           score: newScore,
-          player: this.transaction.sender,
+          player: this.transaction.sender.value,
         }),
       );
     }
+  }
+
+  /// #TODO change to multiple receivers
+  /// #TODO add timestamp check, when timestamp will be on protokit
+  @runtimeMethod()
+  public getReward(competitionId: UInt64): void {
+    let competition = this.competitions.get(competitionId).value;
+
+    let key = new GameRecordKey({
+      competitionId,
+      player: this.transaction.sender.value,
+    });
+
+    assert(this.gotReward.get(key).value);
+    this.gotReward.set(key, Bool(true));
+
+    let winner = this.leaderboard.get(
+      new LeaderboardIndex({
+        competitionId,
+        index: UInt64.zero,
+      }),
+    ).value;
+
+    assert(winner.player.equals(this.transaction.sender.value));
+
+    this.balances.addBalance(
+      this.transaction.sender.value,
+      ProtoUInt64.from(competition.funds),
+    );
+  }
+
+  private payCompetitionFee(competitionId: UInt64, shouldPay: Bool): void {
+    let competition = this.competitions.get(competitionId).value;
+    let fee = Provable.if(shouldPay, competition.participationFee, UInt64.zero);
+
+    this.balances.transferTo(PublicKey.empty(), ProtoUInt64.from(fee));
+    competition.funds = competition.funds.add(fee);
+    this.competitions.set(competitionId, competition);
   }
 }
