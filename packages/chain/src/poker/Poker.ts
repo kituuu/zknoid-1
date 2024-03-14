@@ -2,317 +2,314 @@ import { Option, State, StateMap, assert } from '@proto-kit/protocol';
 import { MatchMaker, QueueListItem } from '../engine/MatchMaker';
 import { state, runtimeMethod, runtimeModule } from '@proto-kit/module';
 import {
-    Bool,
-    Experimental,
-    Group,
-    Proof,
-    Provable,
-    PublicKey,
-    Struct,
-    UInt64,
+  Bool,
+  Experimental,
+  Group,
+  Proof,
+  Provable,
+  PublicKey,
+  Struct,
+  UInt64,
 } from 'o1js';
 import { ShuffleProof } from './ShuffleProof';
 import { DecryptProof, InitialOpenProof } from './DecryptProof';
 import {
-    Card,
-    EncryptedCard,
-    EncryptedDeck,
-    GameIndex,
-    GameInfo,
-    GameStatus,
-    MAX_COLOR,
-    MAX_VALUE,
-    MIN_VALUE,
-    POKER_DECK_SIZE,
-    UserActionIndex,
+  Card,
+  EncryptedCard,
+  EncryptedDeck,
+  GameIndex,
+  GameInfo,
+  GameStatus,
+  MAX_COLOR,
+  MAX_VALUE,
+  MIN_VALUE,
+  POKER_DECK_SIZE,
+  UserActionIndex,
 } from './types';
 
 const MAX_PLAYERS = 2;
 
 function forceOptionValue<T>(o: Option<T>): T {
-    assert(
-        o.isSome,
-        'forceOptionValue fail. Trying to access unitialized value'
-    );
-    return o.value;
+  assert(o.isSome, 'forceOptionValue fail. Trying to access unitialized value');
+  return o.value;
 }
 
 export const initialEnctyptedDeck = new EncryptedDeck({
-    cards: [...Array(MAX_VALUE - MIN_VALUE).keys()].flatMap((value) => {
-        return [...Array(MAX_COLOR).keys()].map((color) => {
-            return new Card({
-                value: UInt64.from(value + MIN_VALUE),
-                color: UInt64.from(color),
-            }).toEncryptedCard();
-        });
-    }),
+  cards: [...Array(MAX_VALUE - MIN_VALUE).keys()].flatMap((value) => {
+    return [...Array(MAX_COLOR).keys()].map((color) => {
+      return new Card({
+        value: UInt64.from(value + MIN_VALUE),
+        color: UInt64.from(color),
+      }).toEncryptedCard();
+    });
+  }),
 });
 
 @runtimeModule()
 export class Poker extends MatchMaker {
-    @state() public games = StateMap.from<UInt64, GameInfo>(UInt64, GameInfo);
-    @state() public lastGameId = State.from<UInt64>(UInt64);
+  @state() public games = StateMap.from<UInt64, GameInfo>(UInt64, GameInfo);
+  @state() public lastGameId = State.from<UInt64>(UInt64);
 
-    @state() public gamesNum = State.from<UInt64>(UInt64);
+  @state() public gamesNum = State.from<UInt64>(UInt64);
 
-    // // Session => player amount
-    // @state() public playersNum = StateMap.from<UInt64, UInt64>(UInt64, UInt64);
+  // // Session => player amount
+  // @state() public playersNum = StateMap.from<UInt64, UInt64>(UInt64, UInt64);
 
-    // [Session, index] => player
-    @state() public players = StateMap.from<GameIndex, PublicKey>(
-        GameIndex,
-        PublicKey
+  // [Session, index] => player
+  @state() public players = StateMap.from<GameIndex, PublicKey>(
+    GameIndex,
+    PublicKey,
+  );
+
+  // #TODO remove
+  // [GameId, cardIndex] => player
+  @state() public kardToPlayer = StateMap.from<GameIndex, PublicKey>(
+    GameIndex,
+    PublicKey,
+  );
+
+  @state() public userActionsDone = StateMap.from<UserActionIndex, Bool>(
+    UserActionIndex,
+    Bool,
+  );
+
+  public override initGame(
+    opponentReady: Bool,
+    opponent: Option<QueueListItem>,
+  ): UInt64 {
+    let newId = this.lastGameId.get().orElse(UInt64.from(0));
+    this.lastGameId.set(newId.add(1));
+
+    let opp = Provable.if(
+      opponent.isSome,
+      this.userToSession
+        .get(opponent.value.userAddress)
+        .orElse(this.transaction.sender),
+      this.transaction.sender, // Workaround. PublicKey.zero cannot be transformed to Group elem
     );
 
-    // #TODO remove
-    // [GameId, cardIndex] => player
-    @state() public kardToPlayer = StateMap.from<GameIndex, PublicKey>(
-        GameIndex,
-        PublicKey
+    assert(
+      this.userToSession
+        .get(this.transaction.sender)
+        .value.equals(PublicKey.empty())
+        .not(),
     );
 
-    @state() public userActionsDone = StateMap.from<UserActionIndex, Bool>(
-        UserActionIndex,
-        Bool
+    let pubKeyList = [
+      this.userToSession
+        .get(this.transaction.sender)
+        .orElse(this.transaction.sender),
+      opp,
+    ];
+
+    let agrigatedPubKey = this.getAgrigatedPubKey(pubKeyList);
+
+    this.games.set(
+      Provable.if(opponentReady, newId, UInt64.zero),
+      new GameInfo({
+        status: UInt64.from(GameStatus.SETUP),
+        deck: initialEnctyptedDeck,
+        curPlayerIndex: UInt64.zero,
+        waitDecFrom: UInt64.zero,
+        maxPlayers: UInt64.from(2), // Change depending on opponents count. For now only 2 players
+        lastCardIndex: UInt64.zero,
+        agrigatedPubKey,
+      }),
     );
 
-    public override initGame(
-        opponentReady: Bool,
-        opponent: Option<QueueListItem>
-    ): UInt64 {
-        let newId = this.lastGameId.get().orElse(UInt64.from(0));
-        this.lastGameId.set(newId.add(1));
+    /// #TODO Transform to provable
+    let players = [opponent.value.userAddress, this.transaction.sender];
 
-        let opp = Provable.if(
-            opponent.isSome,
-            this.userToSession
-                .get(opponent.value.userAddress)
-                .orElse(this.transaction.sender),
-            this.transaction.sender // Workaround. PublicKey.zero cannot be transformed to Group elem
-        );
-
-        assert(
-            this.userToSession
-                .get(this.transaction.sender)
-                .value.equals(PublicKey.empty())
-                .not()
-        );
-
-        let pubKeyList = [
-            this.userToSession
-                .get(this.transaction.sender)
-                .orElse(this.transaction.sender),
-            opp,
-        ];
-
-        let agrigatedPubKey = this.getAgrigatedPubKey(pubKeyList);
-
-        this.games.set(
-            Provable.if(opponentReady, newId, UInt64.zero),
-            new GameInfo({
-                status: UInt64.from(GameStatus.SETUP),
-                deck: initialEnctyptedDeck,
-                curPlayerIndex: UInt64.zero,
-                waitDecFrom: UInt64.zero,
-                maxPlayers: UInt64.from(2), // Change depending on opponents count. For now only 2 players
-                lastCardIndex: UInt64.zero,
-                agrigatedPubKey,
-            })
-        );
-
-        /// #TODO Transform to provable
-        let players = [opponent.value.userAddress, this.transaction.sender];
-
-        for (let i = 0; i < players.length; i++) {
-            this.players.set(
-                new GameIndex({
-                    gameId: newId,
-                    index: UInt64.from(i),
-                }),
-                players[i]
-            );
-        }
-
-        return UInt64.from(newId);
+    for (let i = 0; i < players.length; i++) {
+      this.players.set(
+        new GameIndex({
+          gameId: newId,
+          index: UInt64.from(i),
+        }),
+        players[i],
+      );
     }
 
-    // #TODO change to provable
-    private getAgrigatedPubKey(pubKeys: PublicKey[]): PublicKey {
-        return PublicKey.fromGroup(
-            pubKeys
-                .map((val) => val.toGroup())
-                .reduce((acc, val) => acc.add(val), Group.zero)
-        );
+    return UInt64.from(newId);
+  }
+
+  // #TODO change to provable
+  private getAgrigatedPubKey(pubKeys: PublicKey[]): PublicKey {
+    return PublicKey.fromGroup(
+      pubKeys
+        .map((val) => val.toGroup())
+        .reduce((acc, val) => acc.add(val), Group.zero),
+    );
+  }
+
+  // Can be made parallel
+  @runtimeMethod()
+  public setup(gameId: UInt64, shuffleProof: ShuffleProof) {
+    const sessionSender = this.sessions.get(this.transaction.sender);
+    const sender = Provable.if(
+      sessionSender.isSome,
+      sessionSender.value,
+      this.transaction.sender,
+    );
+
+    let game = forceOptionValue(this.games.get(gameId));
+    // Check that game in setup status
+    assert(game.status.equals(UInt64.from(GameStatus.SETUP)));
+
+    let currentPlayer = this.getUserByIndex(gameId, game.curPlayerIndex);
+
+    // Check if right player runing setup
+    assert(currentPlayer.equals(sender));
+
+    // Check shuffle proof
+    shuffleProof.verify();
+    assert(shuffleProof.publicInput.initialDeck.equals(game.deck));
+
+    // Update deck in games
+    game.deck = shuffleProof.publicOutput.newDeck;
+    game.nextTurn();
+    game.status = Provable.if(
+      game.curPlayerIndex.equals(UInt64.from(0)), // turn returned to first player
+      UInt64.from(GameStatus.INITIAL_OPEN),
+      game.status,
+    );
+
+    this.games.set(gameId, game);
+  }
+
+  // Open 2 shared cards and all cards of oponents
+  @runtimeMethod()
+  public initialOpen(gameId: UInt64, initOpenProof: InitialOpenProof) {
+    let game = forceOptionValue(this.games.get(gameId));
+    // assert(game.status.equals(UInt64.from(GameStatus.INITIAL_OPEN)));
+
+    const sessionSender = this.sessions.get(this.transaction.sender);
+    const sender = Provable.if(
+      sessionSender.isSome,
+      sessionSender.value,
+      this.transaction.sender,
+    );
+
+    initOpenProof.verify();
+
+    // Check that cards are the same
+    // assert(initOpenProof.publicInput.deck.equals(game.deck));
+
+    // Check that this user has not done this already
+    let uii = new UserActionIndex({
+      gameId,
+      user: sender,
+      phase: game.status,
+    });
+
+    assert(this.userActionsDone.get(uii).isSome.not());
+    // this.userActionsDone.set(uii, Bool(true));
+
+    const decryptedValues = initOpenProof.publicOutput.decryptedValues;
+
+    for (let i = 0; i < POKER_DECK_SIZE; i++) {
+      let prevNumOfEncryption = game.deck.cards[i].numOfEncryption;
+      // Workaround protokit simulation with no state
+      let subValue = Provable.if(
+        prevNumOfEncryption
+          .greaterThan(UInt64.zero)
+          .and(decryptedValues[i].equals(Group.zero).not()),
+        UInt64.from(1),
+        UInt64.zero,
+      );
+      game.deck.cards[i].value[2] = game.deck.cards[i].value[2].add(
+        decryptedValues[i],
+      );
+      game.deck.cards[i].numOfEncryption =
+        game.deck.cards[i].numOfEncryption.sub(subValue);
     }
 
-    // Can be made parallel
-    @runtimeMethod()
-    public setup(gameId: UInt64, shuffleProof: ShuffleProof) {
-        const sessionSender = this.sessions.get(this.transaction.sender);
-        const sender = Provable.if(
-            sessionSender.isSome,
-            sessionSender.value,
-            this.transaction.sender
-        );
+    this.games.set(gameId, game);
+  }
 
-        let game = forceOptionValue(this.games.get(gameId));
-        // Check that game in setup status
-        assert(game.status.equals(UInt64.from(GameStatus.SETUP)));
+  @runtimeMethod()
+  public drawCard(gameId: UInt64) {
+    let game = forceOptionValue(this.games.get(gameId));
+    let currentPlayer = this.getUserByIndex(gameId, game.curPlayerIndex);
 
-        let currentPlayer = this.getUserByIndex(gameId, game.curPlayerIndex);
+    // Check if right player runing setup
+    assert(currentPlayer.equals(this.transaction.sender));
 
-        // Check if right player runing setup
-        assert(currentPlayer.equals(sender));
+    this.kardToPlayer.set(
+      new GameIndex({
+        gameId,
+        index: game.lastCardIndex,
+      }),
+      this.transaction.sender,
+    );
 
-        // Check shuffle proof
-        shuffleProof.verify();
-        assert(shuffleProof.publicInput.initialDeck.equals(game.deck));
+    game.lastCardIndex = game.lastCardIndex.add(1);
+    game.nextTurn();
+  }
 
-        // Update deck in games
-        game.deck = shuffleProof.publicOutput.newDeck;
-        game.nextTurn();
-        game.status = Provable.if(
-            game.curPlayerIndex.equals(UInt64.from(0)), // turn returned to first player
-            UInt64.from(GameStatus.INITIAL_OPEN),
-            game.status
-        );
+  // Do not check for recall.
+  @runtimeMethod()
+  public decryptCard(
+    gameId: UInt64,
+    cardId: UInt64,
+    decryptProof: DecryptProof,
+  ) {
+    let game = forceOptionValue(this.games.get(gameId));
+    let card = game.deck.cards[+cardId.toString()]; // Unprovable. Change to provable version
+    assert(card.value[0].equals(decryptProof.publicInput.m0));
 
-        this.games.set(gameId, game);
-    }
+    decryptProof.verify();
+    game.deck.cards[+cardId.toString()].value[2] = game.deck.cards[
+      +cardId.toString()
+    ].value[2].add(decryptProof.publicOutput.decryptedPart);
 
-    // Open 2 shared cards and all cards of oponents
-    @runtimeMethod()
-    public initialOpen(gameId: UInt64, initOpenProof: InitialOpenProof) {
-        let game = forceOptionValue(this.games.get(gameId));
-        // assert(game.status.equals(UInt64.from(GameStatus.INITIAL_OPEN)));
+    let prevNumOfEncryption =
+      game.deck.cards[+cardId.toString()].numOfEncryption;
+    // Workaround protokit simulation with no state
+    let subValue = Provable.if(
+      prevNumOfEncryption.greaterThan(UInt64.zero),
+      UInt64.from(1),
+      UInt64.zero,
+    );
 
-        const sessionSender = this.sessions.get(this.transaction.sender);
-        const sender = Provable.if(
-            sessionSender.isSome,
-            sessionSender.value,
-            this.transaction.sender
-        );
+    game.deck.cards[+cardId.toString()].numOfEncryption =
+      game.deck.cards[+cardId.toString()].numOfEncryption.sub(subValue);
+    this.games.set(gameId, game);
+  }
 
-        initOpenProof.verify();
+  // // #TODO check if array is provable. Change if it is not
+  // @runtimeMethod()
+  // public decryptMultipleCards(
+  //     gameId: UInt64,
+  //     cardsId: UInt64[],
+  //     decryptProofs: DecryptProof[]
+  // ) {
+  //     for (let i = 0; i < cardsId.length; i++) {
+  //         this.decryptCard(gameId, cardsId[i], decryptProofs[i]);
+  //     }
+  // }
 
-        // Check that cards are the same
-        // assert(initOpenProof.publicInput.deck.equals(game.deck));
+  private getUserByIndex(gameId: UInt64, index: UInt64): PublicKey {
+    return forceOptionValue(
+      this.players.get(
+        new GameIndex({
+          gameId,
+          index,
+        }),
+      ),
+    );
+  }
 
-        // Check that this user has not done this already
-        let uii = new UserActionIndex({
-            gameId,
-            user: sender,
-            phase: game.status,
-        });
+  /// First 5 cards [0, 4] are common cards
+  /// Next card are players cards [5, 6] - 1st player, [7, 8] - second and so on
+  /// Returns 0 if it is common card, userId +1 if it is card of userId
+  private getCardOwner(gameId: UInt64, index: UInt64): UInt64 {
+    let value = Provable.if(
+      index.lessThan(UInt64.from(5)),
+      UInt64.zero,
+      index.sub(UInt64.from(5)).div(UInt64.from(2)).add(UInt64.from(1)),
+    );
 
-        assert(this.userActionsDone.get(uii).isSome.not());
-        // this.userActionsDone.set(uii, Bool(true));
-
-        const decryptedValues = initOpenProof.publicOutput.decryptedValues;
-
-        for (let i = 0; i < POKER_DECK_SIZE; i++) {
-            let prevNumOfEncryption = game.deck.cards[i].numOfEncryption;
-            // Workaround protokit simulation with no state
-            let subValue = Provable.if(
-                prevNumOfEncryption
-                    .greaterThan(UInt64.zero)
-                    .and(decryptedValues[i].equals(Group.zero).not()),
-                UInt64.from(1),
-                UInt64.zero
-            );
-            game.deck.cards[i].value[2] = game.deck.cards[i].value[2].add(
-                decryptedValues[i]
-            );
-            game.deck.cards[i].numOfEncryption =
-                game.deck.cards[i].numOfEncryption.sub(subValue);
-        }
-
-        this.games.set(gameId, game);
-    }
-
-    @runtimeMethod()
-    public drawCard(gameId: UInt64) {
-        let game = forceOptionValue(this.games.get(gameId));
-        let currentPlayer = this.getUserByIndex(gameId, game.curPlayerIndex);
-
-        // Check if right player runing setup
-        assert(currentPlayer.equals(this.transaction.sender));
-
-        this.kardToPlayer.set(
-            new GameIndex({
-                gameId,
-                index: game.lastCardIndex,
-            }),
-            this.transaction.sender
-        );
-
-        game.lastCardIndex = game.lastCardIndex.add(1);
-        game.nextTurn();
-    }
-
-    // Do not check for recall.
-    @runtimeMethod()
-    public decryptCard(
-        gameId: UInt64,
-        cardId: UInt64,
-        decryptProof: DecryptProof
-    ) {
-        let game = forceOptionValue(this.games.get(gameId));
-        let card = game.deck.cards[+cardId.toString()]; // Unprovable. Change to provable version
-        assert(card.value[0].equals(decryptProof.publicInput.m0));
-
-        decryptProof.verify();
-        game.deck.cards[+cardId.toString()].value[2] = game.deck.cards[
-            +cardId.toString()
-        ].value[2].add(decryptProof.publicOutput.decryptedPart);
-
-        let prevNumOfEncryption =
-            game.deck.cards[+cardId.toString()].numOfEncryption;
-        // Workaround protokit simulation with no state
-        let subValue = Provable.if(
-            prevNumOfEncryption.greaterThan(UInt64.zero),
-            UInt64.from(1),
-            UInt64.zero
-        );
-
-        game.deck.cards[+cardId.toString()].numOfEncryption =
-            game.deck.cards[+cardId.toString()].numOfEncryption.sub(subValue);
-        this.games.set(gameId, game);
-    }
-
-    // // #TODO check if array is provable. Change if it is not
-    // @runtimeMethod()
-    // public decryptMultipleCards(
-    //     gameId: UInt64,
-    //     cardsId: UInt64[],
-    //     decryptProofs: DecryptProof[]
-    // ) {
-    //     for (let i = 0; i < cardsId.length; i++) {
-    //         this.decryptCard(gameId, cardsId[i], decryptProofs[i]);
-    //     }
-    // }
-
-    private getUserByIndex(gameId: UInt64, index: UInt64): PublicKey {
-        return forceOptionValue(
-            this.players.get(
-                new GameIndex({
-                    gameId,
-                    index,
-                })
-            )
-        );
-    }
-
-    /// First 5 cards [0, 4] are common cards
-    /// Next card are players cards [5, 6] - 1st player, [7, 8] - second and so on
-    /// Returns 0 if it is common card, userId +1 if it is card of userId
-    private getCardOwner(gameId: UInt64, index: UInt64): UInt64 {
-        let value = Provable.if(
-            index.lessThan(UInt64.from(5)),
-            UInt64.zero,
-            index.sub(UInt64.from(5)).div(UInt64.from(2)).add(UInt64.from(1))
-        );
-
-        return value;
-    }
+    return value;
+  }
 }
