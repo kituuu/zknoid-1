@@ -53,6 +53,7 @@ export function buildClient<
       Balances: {},
       RandzuLogic: {},
       ThimblerigLogic: {},
+      Poker: {},
     },
   });
 

@@ -1,3 +1,5 @@
+import 'reflect-metadata';
+
 import { dummyProofBase64 } from '@/app/constants/dummyProofBase64';
 import { BRIDGE_CACHE } from '@/constants/bridge_cache';
 import { WebFileSystem, fetchCache } from '@/lib/cache';
@@ -125,7 +127,7 @@ const functions = {
     let deck = EncryptedDeck.fromJSONString(args.deckJSON);
 
     let agrigatedPubKey: PublicKey = PublicKey.fromBase58(
-      args.agrigatedPkBase58,
+      args.agrigatedPkBase58
     );
 
     // @ts-ignore
@@ -136,14 +138,14 @@ const functions = {
     let permutationMatrix = PermutationMatrix.getRandomMatrix();
 
     let noise = [...Array(POKER_DECK_SIZE)].map(() =>
-      Field014.from('0x' + randomBytes(253).toString('hex')),
+      Field014.from('0x' + randomBytes(253).toString('hex'))
     );
 
     let publicOutput = shuffle(publicInput, permutationMatrix, noise);
     const shuffleProof = await mockProof(
       publicOutput,
       ShuffleProof,
-      publicInput,
+      publicInput
     );
 
     return shuffleProof.toJSON();
@@ -163,7 +165,7 @@ const functions = {
     const decryptProof = await mockProof(
       publicOutput,
       DecryptProof,
-      publicInput,
+      publicInput
     );
 
     return decryptProof.toJSON();
@@ -189,7 +191,7 @@ const functions = {
     const initalOpenProve = await mockProof(
       publicOutput,
       InitialOpenProof,
-      publicInput,
+      publicInput
     );
 
     return initalOpenProve.toJSON();
@@ -222,7 +224,7 @@ if (typeof window !== 'undefined') {
         data: returnData,
       };
       postMessage(message);
-    },
+    }
   );
 }
 

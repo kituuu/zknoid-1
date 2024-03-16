@@ -43,23 +43,23 @@ export interface MatchQueueState {
   getQueueLength: () => number;
   loadMatchQueue: (
     client: ClientAppChain<typeof pokerConfig.runtimeModules>,
-    blockHeight: number,
+    blockHeight: number
   ) => Promise<void>;
   loadActiveGame: (
     client: ClientAppChain<typeof pokerConfig.runtimeModules>,
     blockHeight: number,
     address: PublicKey,
-    sessionPrivateKey: PrivateKey,
+    sessionPrivateKey: PrivateKey
   ) => Promise<void>;
   resetLastGameState: () => void;
 }
 
-const PENDING_BLOCKS_NUM = UInt64.from(5);
+const PENDING_BLOCKS_NUM = UInt64.from(20);
 
 const decryptOwnCards = (
   initialDeck: EncryptedDeck,
   selfIndex: number,
-  privateKey: PrivateKey,
+  privateKey: PrivateKey
 ): EncryptedDeck => {
   console.log('Decrypt own cards');
 
@@ -72,7 +72,7 @@ const decryptOwnCards = (
     if (+curCard.numOfEncryption.toString() == 1) {
       console.log(deck.cards[cardIndex].value);
       deck.cards[cardIndex].value[2] = curCard.value[2].add(
-        decryptOne(privateKey, curCard.value[0]),
+        decryptOne(privateKey, curCard.value[0])
       );
       deck.cards[cardIndex].numOfEncryption =
         deck.cards[cardIndex].numOfEncryption.sub(1);
@@ -105,14 +105,14 @@ export const usePokerMatchQueueStore = create<
     },
     async loadMatchQueue(
       client: ClientAppChain<typeof pokerConfig.runtimeModules>,
-      blockHeight: number,
+      blockHeight: number
     ) {
       set((state) => {
         state.loading = true;
       });
 
       const queueLength = await client.query.runtime.Poker.queueLength.get(
-        UInt64.from(blockHeight).div(PENDING_BLOCKS_NUM),
+        UInt64.from(blockHeight).div(PENDING_BLOCKS_NUM)
       );
 
       set((state) => {
@@ -125,7 +125,7 @@ export const usePokerMatchQueueStore = create<
       client: ClientAppChain<typeof pokerConfig.runtimeModules>,
       blockHeight: number,
       address: PublicKey,
-      sessionPrivateKey: PrivateKey,
+      sessionPrivateKey: PrivateKey
     ) {
       set((state) => {
         state.loading = true;
@@ -140,7 +140,7 @@ export const usePokerMatchQueueStore = create<
           new RoundIdxUser({
             roundId: UInt64.from(blockHeight).div(PENDING_BLOCKS_NUM),
             userAddress: address,
-          }),
+          })
         );
 
       console.log('Active game id', activeGameId?.toBigInt());
@@ -152,7 +152,7 @@ export const usePokerMatchQueueStore = create<
       ) {
         console.log('Setting last game state', this.gameInfo?.gameId);
         const gameInfo = (await client.query.runtime.Poker.games.get(
-          UInt64.from(this.gameInfo?.gameId!),
+          UInt64.from(this.gameInfo?.gameId!)
         ))!;
         console.log('Fetched last game info', gameInfo);
         console.log('Game winner', gameInfo.winner.toBase58());
@@ -214,7 +214,7 @@ export const usePokerMatchQueueStore = create<
         let contractDeckDecrypted = decryptOwnCards(
           contractDeck,
           selfIndex,
-          sessionPrivateKey,
+          sessionPrivateKey
         );
 
         // const currentUserIndex = address
@@ -251,7 +251,7 @@ export const usePokerMatchQueueStore = create<
         state.loading = false;
       });
     },
-  })),
+  }))
 );
 
 export const useObservePokerMatchQueue = () => {
@@ -262,7 +262,7 @@ export const useObservePokerMatchQueue = () => {
     ClientAppChain<typeof pokerConfig.runtimeModules> | undefined
   >(AppChainClientContext);
   const sessionPrivateKey = useStore(useSessionKeyStore, (state) =>
-    state.getSessionKey(),
+    state.getSessionKey()
   );
 
   useEffect(() => {
@@ -279,7 +279,7 @@ export const useObservePokerMatchQueue = () => {
       client,
       parseInt(chain.block?.height ?? '0'),
       PublicKey.fromBase58(network.address!),
-      sessionPrivateKey,
+      sessionPrivateKey
     );
   }, [chain.block?.height, network.walletConnected]);
 };
