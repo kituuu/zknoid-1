@@ -31,6 +31,7 @@ export interface IGameInfo {
   agrigatedPubKey: PublicKey;
   players: number;
   selfIndex: number;
+  round: number;
 }
 
 export interface MatchQueueState {
@@ -195,6 +196,7 @@ export const usePokerMatchQueueStore = create<
         let agrigatedPubKey = gameInfo.agrigatedPubKey;
         let players = +gameInfo.maxPlayers.toString();
         let selfIndex = -1;
+        let round = +gameInfo.round.toString();
 
         for (let i = 0; i < players; i++) {
           // @ts-ignore
@@ -239,6 +241,7 @@ export const usePokerMatchQueueStore = create<
             agrigatedPubKey,
             players,
             selfIndex,
+            round,
           };
           console.log('Parsed game info', state.gameInfo);
         });

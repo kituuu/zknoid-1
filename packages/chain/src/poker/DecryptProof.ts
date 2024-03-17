@@ -99,23 +99,50 @@ export class InitialOpenProof extends Experimental.ZkProgram.Proof(
 
 ////////////////////////// Public card open ///////////////////////////
 
+export class RoundIndexes extends Struct({
+  values: Provable.Array(Int64, 3),
+}) {
+  static from(values: number[]): RoundIndexes {
+    return new RoundIndexes({
+      values: values.map((v: number) => Int64.from(v)),
+    });
+  }
+}
+
+export const getRoundIndexes = (round: UInt64): RoundIndexes => {
+  const firstTurn = RoundIndexes.from([0, 1, 2]);
+  const secondTurn = RoundIndexes.from([3, -1, -1]);
+  const thirdTurn = RoundIndexes.from([4, -1, -1]);
+  const isFirst = round.equals(UInt64.from(1));
+  const isSecond = round.equals(UInt64.from(2));
+  const isThird = round.equals(UInt64.from(3));
+
+  return Provable.switch([isFirst, isSecond, isThird], RoundIndexes, [
+    firstTurn,
+    secondTurn,
+    thirdTurn,
+  ]);
+};
+
 export class PublicOpenPublicInput extends Struct({
   deck: EncryptedDeck,
-  indexes: Provable.Array(Int64, 3),
+  round: UInt64,
 }) {}
 
 export class PublicOpenPublicOutput extends Struct({
   decryptedValues: Provable.Array(Group, POKER_DECK_SIZE),
 }) {}
 
-export const publicOpen = (
+export const provePublicOpen = (
   publicInput: PublicOpenPublicInput,
   pk: PrivateKey,
 ): PublicOpenPublicOutput => {
   let decryptedValues: Group[] = Array(POKER_DECK_SIZE).fill(Group.zero);
 
-  for (let i = 0; i < publicInput.indexes.length; i++) {
-    let index = publicInput.indexes[i];
+  let indexes = getRoundIndexes(publicInput.round).values;
+
+  for (let i = 0; i < indexes.length; i++) {
+    let index = indexes[i];
     let val = Provable.if(index.isPositive(), index, Int64.from(0));
     let numVal = +val.toString();
     // #TODO Array access is not provable. Change to provable version
@@ -136,7 +163,7 @@ export const PublicOpen = Experimental.ZkProgram({
   methods: {
     proveInitialOpen: {
       privateInputs: [PrivateKey],
-      method: publicOpen,
+      method: provePublicOpen,
     },
   },
 });

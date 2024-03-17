@@ -193,6 +193,30 @@ export default function PokerPage({
     await tx.send();
   };
 
+  const nextTurn = async () => {
+    console.log('nextTurn');
+    let pokerWorkerClient = await workerClientStore.start();
+
+    const publicOpenProof = await pokerWorkerClient.provePublicOpen(
+      matchQueue.gameInfo!.contractDeck,
+      sessionPrivateKey,
+      UInt64.from(matchQueue.gameInfo!.round)
+    );
+
+    console.log('prove ready');
+
+    const poker = client.runtime.resolve('Poker');
+
+    const tx = await client.transaction(sessionPublicKey, () => {
+      poker.openNext(UInt64.from(matchQueue.activeGameId), publicOpenProof);
+    });
+
+    setLoading(true);
+
+    tx.transaction = tx.transaction?.sign(sessionPrivateKey);
+    await tx.send();
+  };
+
   return (
     <GamePage gameConfig={pokerConfig}>
       <main className="flex grow flex-col items-center gap-5 p-5">
@@ -257,6 +281,7 @@ export default function PokerPage({
           sessionKey={sessionPublicKey.toBase58()}
           encryptAll={encryptAll}
           decryptSingle={decryptSingle}
+          nextTurn={nextTurn}
         />
         <div>Players in queue: {matchQueue.getQueueLength()}</div>
         {/* <div className="flex flex-col gap-10">

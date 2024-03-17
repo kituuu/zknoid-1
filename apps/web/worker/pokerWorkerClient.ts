@@ -17,6 +17,7 @@ import { ShuffleProof } from 'zknoid-chain-dev/dist/src/poker/ShuffleProof';
 import {
   DecryptProof,
   InitialOpenProof,
+  PublicOpenProof,
 } from 'zknoid-chain-dev/dist/src/poker/DecryptProof';
 
 export default class PokerWorkerClient {
@@ -82,6 +83,18 @@ export default class PokerWorkerClient {
     });
     console.log('Restoring', result);
     const restoredProof = InitialOpenProof.fromJSON(result);
+
+    return restoredProof;
+  }
+
+  async provePublicOpen(deck: EncryptedDeck, pk: PrivateKey, round: UInt64) {
+    const result = await this._call('provePublicOpen', {
+      deckJSON: deck.toJSONString(),
+      pkBase58: pk.toBase58(),
+      round: round.toJSON(),
+    });
+    console.log('Restoring', result);
+    const restoredProof = PublicOpenProof.fromJSON(result);
 
     return restoredProof;
   }

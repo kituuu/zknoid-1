@@ -17,6 +17,7 @@ interface IGameViewProps {
   sessionKey: string | undefined;
   encryptAll: () => Promise<any>;
   decryptSingle: (i: number) => Promise<any>;
+  nextTurn: () => Promise<any>;
 }
 
 const getPlayerCardsDiv = (ed: EncryptedDeck, i: number): ReactElement => {
@@ -120,6 +121,7 @@ export const GameView = (props: IGameViewProps) => {
       <div>Next user ${props.gameInfo?.nextUser.toBase58()}</div>
       <div>Index ${props.gameInfo?.selfIndex}</div>
       <div onClick={props.encryptAll}> Encrypt all </div>
+      <div onClick={props.nextTurn}> Next turn </div>
 
       <div className="flex flex-grow flex-col">
         <div className="width h-40 w-full flex-none">

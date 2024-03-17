@@ -36,10 +36,14 @@ import {
   DecryptProofPublicInput,
   InitialOpenProof,
   InitialOpenPublicInput,
+  PublicOpenProof,
   proveDecrypt,
   proveInitialOpen,
+  provePublicOpen,
+  PublicOpenPublicInput,
 } from 'zknoid-chain-dev/dist/src/poker/DecryptProof';
 import { randomBytes } from 'crypto';
+// import { getRoundIndexes } from 'zknoid-chain-dev/dist/src/poker/Poker';
 
 type Transaction = Awaited<ReturnType<typeof Mina.transaction>>;
 
@@ -195,6 +199,31 @@ const functions = {
     );
 
     return initalOpenProve.toJSON();
+  },
+  provePublicOpen: async (args: {
+    deckJSON: any;
+    pkBase58: any;
+    round: any;
+  }) => {
+    console.log('Prove public open started');
+    let deck = EncryptedDeck.fromJSONString(args.deckJSON);
+    let privateKey: PrivateKey = PrivateKey.fromBase58(args.pkBase58);
+    let round = UInt64.fromJSON(args.round);
+
+    // @ts-ignore
+    let publicInput = new PublicOpenPublicInput({
+      deck,
+      round,
+    });
+
+    let publicOutput = provePublicOpen(publicInput, privateKey);
+    const publicOpenProof = await mockProof(
+      publicOutput,
+      PublicOpenProof,
+      publicInput
+    );
+
+    return publicOpenProof.toJSON();
   },
 };
 

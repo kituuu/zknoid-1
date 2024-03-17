@@ -50,16 +50,6 @@ export const initialEnctyptedDeck = new EncryptedDeck({
   }),
 });
 
-export class RoundIndexes extends Struct({
-  values: Provable.Array(Int64, 3),
-}) {
-  static from(values: number[]): RoundIndexes {
-    return new RoundIndexes({
-      values: values.map((v: number) => Int64.from(v)),
-    });
-  }
-}
-
 @runtimeModule()
 export class Poker extends MatchMaker {
   @state() public games = StateMap.from<UInt64, GameInfo>(UInt64, GameInfo);
@@ -269,8 +259,9 @@ export class Poker extends MatchMaker {
     // assert(game.deck.equals(openProof.publicInput.deck))
 
     // Check indexes
-    let indexes = this.getRoundIndexes(game.round);
-    openProof.publicInput.indexes;
+    // let indexes = getRoundIndexes(game.round);
+
+    assert(openProof.publicInput.round.equals(game.round));
 
     const decryptedValues = openProof.publicOutput.decryptedValues;
 
@@ -397,19 +388,5 @@ export class Poker extends MatchMaker {
     );
 
     return value;
-  }
-  private getRoundIndexes(round: UInt64): RoundIndexes {
-    const firstTurn = RoundIndexes.from([0, 1, 2]);
-    const secondTurn = RoundIndexes.from([3, -1, -1]);
-    const thirdTurn = RoundIndexes.from([4, -1, -1]);
-    const isFirst = round.equals(UInt64.from(1));
-    const isSecond = round.equals(UInt64.from(2));
-    const isThird = round.equals(UInt64.from(3));
-
-    return Provable.switch([isFirst, isSecond, isThird], RoundIndexes, [
-      firstTurn,
-      secondTurn,
-      thirdTurn,
-    ]);
   }
 }
