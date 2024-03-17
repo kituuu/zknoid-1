@@ -248,9 +248,14 @@ export class Poker extends MatchMaker {
       game.round,
     );
 
+    let decLeftSubValue = Provable.if(
+      game.decLeft.greaterThan(UInt64.zero),
+      UInt64.from(1),
+      UInt64.zero,
+    );
     game.decLeft = Provable.if(
       game.decLeft.greaterThan(UInt64.from(1)),
-      game.decLeft.sub(1),
+      game.decLeft.sub(decLeftSubValue),
       game.maxPlayers,
     );
 
@@ -292,9 +297,14 @@ export class Poker extends MatchMaker {
       game.round,
     );
 
+    let decLeftSubValue = Provable.if(
+      game.decLeft.greaterThan(UInt64.zero),
+      UInt64.from(1),
+      UInt64.zero,
+    );
     game.decLeft = Provable.if(
       game.decLeft.greaterThan(UInt64.from(1)),
-      game.decLeft.sub(1),
+      game.decLeft.sub(decLeftSubValue),
       game.maxPlayers,
     );
 

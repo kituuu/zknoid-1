@@ -56,9 +56,10 @@ const eCardToDiv = (ec: EncryptedCard): ReactElement => {
 
 const cardToDiv = (card: Card): ReactElement => {
   return (
-    <div className="w-max">
+    <div className="flex h-full w-max flex-col">
       {/* {`${card.value.toString()}_${card.color.toString()}`} */}
       <Image
+        className="max-h-full flex-grow object-scale-down"
         src={`/poker_cards/${card.value.toString()}_${card.color.toString()}.svg`}
         alt=""
         width={167}
@@ -77,7 +78,7 @@ const cardToString = (ec: EncryptedCard): string => {
 };
 
 const sortEncryptedCards = (
-  ed: EncryptedDeck,
+  ed: EncryptedDeck
 ): [[EncryptedCard, number][], [Card, number][], [Card, number][]] => {
   let closedCards: [EncryptedCard, number][] = [];
   let ownCards: [Card, number][] = [];
@@ -105,7 +106,7 @@ export const GameView = (props: IGameViewProps) => {
     }
 
     let [closedCards, ownCards, openCards] = sortEncryptedCards(
-      props.gameInfo.contractDeckDecrypted,
+      props.gameInfo.contractDeckDecrypted
     );
     setOpenCards(openCards);
     setOwnCards(ownCards);
@@ -126,10 +127,7 @@ export const GameView = (props: IGameViewProps) => {
             [...Array(props.gameInfo?.players).keys()]
               .filter((elem) => elem != props.gameInfo?.selfIndex)
               .map((index) =>
-                getPlayerCardsDiv(
-                  props.gameInfo?.contractDeckDecrypted!,
-                  index,
-                ),
+                getPlayerCardsDiv(props.gameInfo?.contractDeckDecrypted!, index)
               )}
         </div>
         <div className="flex w-full flex-grow items-center justify-center">
@@ -159,7 +157,7 @@ export const GameView = (props: IGameViewProps) => {
           {props.gameInfo?.contractDeckDecrypted &&
             getPlayerCardsDiv(
               props.gameInfo?.contractDeckDecrypted,
-              props.gameInfo?.selfIndex,
+              props.gameInfo?.selfIndex
             )}
         </div>
       </div>
