@@ -237,9 +237,11 @@ export class GameInfo extends Struct({
   deck: EncryptedDeck,
   curPlayerIndex: UInt64, // Index of current player
   waitDecFrom: UInt64,
+  decLeft: UInt64,
   maxPlayers: UInt64,
   lastCardIndex: UInt64,
   agrigatedPubKey: PublicKey,
+  round: UInt64,
 }) {
   nextTurn() {
     // Bypass protokit simulation with no state. In this case this.maxPlayers == 0, and fails

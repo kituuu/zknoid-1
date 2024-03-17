@@ -5,6 +5,7 @@ import {
   Bool,
   Experimental,
   Group,
+  Int64,
   Proof,
   Provable,
   PublicKey,
@@ -12,7 +13,11 @@ import {
   UInt64,
 } from 'o1js';
 import { ShuffleProof } from './ShuffleProof';
-import { DecryptProof, InitialOpenProof } from './DecryptProof';
+import {
+  DecryptProof,
+  InitialOpenProof,
+  PublicOpenProof,
+} from './DecryptProof';
 import {
   Card,
   EncryptedCard,
@@ -44,6 +49,16 @@ export const initialEnctyptedDeck = new EncryptedDeck({
     });
   }),
 });
+
+export class RoundIndexes extends Struct({
+  values: Provable.Array(Int64, 3),
+}) {
+  static from(values: number[]): RoundIndexes {
+    return new RoundIndexes({
+      values: values.map((v: number) => Int64.from(v)),
+    });
+  }
+}
 
 @runtimeModule()
 export class Poker extends MatchMaker {
@@ -111,9 +126,11 @@ export class Poker extends MatchMaker {
         deck: initialEnctyptedDeck,
         curPlayerIndex: UInt64.zero,
         waitDecFrom: UInt64.zero,
+        decLeft: UInt64.from(2),
         maxPlayers: UInt64.from(2), // Change depending on opponents count. For now only 2 players
         lastCardIndex: UInt64.zero,
         agrigatedPubKey,
+        round: UInt64.zero,
       }),
     );
 
@@ -224,9 +241,67 @@ export class Poker extends MatchMaker {
         game.deck.cards[i].numOfEncryption.sub(subValue);
     }
 
+    // #TODO move to separate function
+    game.round = Provable.if(
+      game.decLeft.equals(UInt64.from(1)),
+      game.round.add(1),
+      game.round,
+    );
+
+    game.decLeft = Provable.if(
+      game.decLeft.greaterThan(UInt64.from(1)),
+      game.decLeft.sub(1),
+      game.maxPlayers,
+    );
+
     this.games.set(gameId, game);
   }
 
+  @runtimeMethod()
+  public openNext(gameId: UInt64, openProof: PublicOpenProof) {
+    let game = forceOptionValue(this.games.get(gameId));
+    openProof.verify();
+    // assert(game.deck.equals(openProof.publicInput.deck))
+
+    // Check indexes
+    let indexes = this.getRoundIndexes(game.round);
+    openProof.publicInput.indexes;
+
+    const decryptedValues = openProof.publicOutput.decryptedValues;
+
+    for (let i = 0; i < POKER_DECK_SIZE; i++) {
+      let prevNumOfEncryption = game.deck.cards[i].numOfEncryption;
+      // Workaround protokit simulation with no state
+      let subValue = Provable.if(
+        prevNumOfEncryption
+          .greaterThan(UInt64.zero)
+          .and(decryptedValues[i].equals(Group.zero).not()),
+        UInt64.from(1),
+        UInt64.zero,
+      );
+      game.deck.cards[i].value[2] = game.deck.cards[i].value[2].add(
+        decryptedValues[i],
+      );
+      game.deck.cards[i].numOfEncryption =
+        game.deck.cards[i].numOfEncryption.sub(subValue);
+    }
+
+    game.round = Provable.if(
+      game.decLeft.equals(UInt64.from(1)),
+      game.round.add(1),
+      game.round,
+    );
+
+    game.decLeft = Provable.if(
+      game.decLeft.greaterThan(UInt64.from(1)),
+      game.decLeft.sub(1),
+      game.maxPlayers,
+    );
+
+    this.games.set(gameId, game);
+  }
+
+  /*
   @runtimeMethod()
   public drawCard(gameId: UInt64) {
     let game = forceOptionValue(this.games.get(gameId));
@@ -246,6 +321,7 @@ export class Poker extends MatchMaker {
     game.lastCardIndex = game.lastCardIndex.add(1);
     game.nextTurn();
   }
+  */
 
   // Do not check for recall.
   @runtimeMethod()
@@ -311,5 +387,19 @@ export class Poker extends MatchMaker {
     );
 
     return value;
+  }
+  private getRoundIndexes(round: UInt64): RoundIndexes {
+    const firstTurn = RoundIndexes.from([0, 1, 2]);
+    const secondTurn = RoundIndexes.from([3, -1, -1]);
+    const thirdTurn = RoundIndexes.from([4, -1, -1]);
+    const isFirst = round.equals(UInt64.from(1));
+    const isSecond = round.equals(UInt64.from(2));
+    const isThird = round.equals(UInt64.from(3));
+
+    return Provable.switch([isFirst, isSecond, isThird], RoundIndexes, [
+      firstTurn,
+      secondTurn,
+      thirdTurn,
+    ]);
   }
 }
