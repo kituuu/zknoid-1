@@ -34,6 +34,15 @@ const pickCard = (cards: Card[], index: UInt64): Card => {
   return card;
 };
 
+const processHigh = (cards: Card[], proposal: Int64[]): [Combination, Bool] => {
+  let card = pickCard(cards, proposal[0].magnitude);
+
+  return [
+    new Combination({ id: Combination.highId, value: card.value }),
+    Bool(true),
+  ];
+};
+
 const processPair = (cards: Card[], proposal: Int64[]): [Combination, Bool] => {
   let first = pickCard(cards, proposal[0].magnitude);
   let second = pickCard(cards, proposal[1].magnitude);
@@ -44,6 +53,157 @@ const processPair = (cards: Card[], proposal: Int64[]): [Combination, Bool] => {
   ];
 };
 
+const processTwoPair = (
+  cards: Card[],
+  proposal: Int64[],
+): [Combination, Bool] => {
+  let first = pickCard(cards, proposal[0].magnitude); // Biggest. Should be checked on front
+  let second = pickCard(cards, proposal[1].magnitude);
+  let third = pickCard(cards, proposal[2].magnitude); // Lowest
+  let fourth = pickCard(cards, proposal[3].magnitude);
+
+  return [
+    new Combination({
+      id: Combination.pairId,
+      value: first.value.mul(100).add(third.value),
+    }),
+    first.value.equals(second.value).and(third.value.equals(fourth.value)),
+  ];
+};
+
+const processThree = (
+  cards: Card[],
+  proposal: Int64[],
+): [Combination, Bool] => {
+  let first = pickCard(cards, proposal[0].magnitude);
+  let second = pickCard(cards, proposal[1].magnitude);
+  let third = pickCard(cards, proposal[2].magnitude);
+
+  return [
+    new Combination({ id: Combination.threeId, value: first.value }),
+    first.value.equals(second.value).and(first.value.equals(third.value)),
+  ];
+};
+
+const processStraight = (
+  cards: Card[],
+  proposal: Int64[],
+): [Combination, Bool] => {
+  let first = pickCard(cards, proposal[0].magnitude); // Lowest to highest
+  let second = pickCard(cards, proposal[1].magnitude);
+  let third = pickCard(cards, proposal[2].magnitude);
+  let fourth = pickCard(cards, proposal[3].magnitude);
+  let fifth = pickCard(cards, proposal[4].magnitude);
+
+  let expectedFirst = first.value;
+  let expectedSecond = expectedFirst.add(1);
+  let expectedThird = expectedSecond.add(1);
+  let expectedFourth = expectedThird.add(1);
+  let expectedFifth = expectedFourth.add(1);
+
+  return [
+    new Combination({ id: Combination.straightId, value: first.value }),
+    second.value
+      .equals(expectedSecond)
+      .and(third.value.equals(expectedThird))
+      .and(fourth.value.equals(expectedFourth))
+      .and(fifth.value.equals(expectedFifth)),
+  ];
+};
+
+const processFlush = (
+  cards: Card[],
+  proposal: Int64[],
+): [Combination, Bool] => {
+  let first = pickCard(cards, proposal[0].magnitude); // First should be biggest. Should be checked on front
+  let second = pickCard(cards, proposal[1].magnitude);
+  let third = pickCard(cards, proposal[2].magnitude);
+  let fourth = pickCard(cards, proposal[3].magnitude);
+  let fifth = pickCard(cards, proposal[4].magnitude);
+  let color = first.color;
+
+  return [
+    new Combination({ id: Combination.flushId, value: first.value }),
+    second.color
+      .equals(color)
+      .and(third.color.equals(color))
+      .and(fourth.color.equals(color))
+      .and(fifth.color.equals(color)),
+  ];
+};
+
+const processFullHouse = (
+  cards: Card[],
+  proposal: Int64[],
+): [Combination, Bool] => {
+  /// 3 + 2
+  let first = pickCard(cards, proposal[0].magnitude);
+  let second = pickCard(cards, proposal[1].magnitude);
+  let third = pickCard(cards, proposal[2].magnitude);
+  let fourth = pickCard(cards, proposal[3].magnitude);
+  let fifth = pickCard(cards, proposal[4].magnitude);
+
+  return [
+    new Combination({
+      id: Combination.fullHouseId,
+      value: first.value.mul(100).add(fourth.value),
+    }),
+    first.value
+      .equals(second.value)
+      .and(first.value.equals(third.value))
+      .and(fourth.value.equals(fifth.value)),
+  ];
+};
+
+const processFour = (cards: Card[], proposal: Int64[]): [Combination, Bool] => {
+  let first = pickCard(cards, proposal[0].magnitude);
+  let second = pickCard(cards, proposal[1].magnitude);
+  let third = pickCard(cards, proposal[2].magnitude);
+  let fourth = pickCard(cards, proposal[3].magnitude);
+
+  return [
+    new Combination({ id: Combination.fourId, value: first.value }),
+    first.value
+      .equals(second.value)
+      .and(first.value.equals(third.value))
+      .and(first.value.equals(fourth.value)),
+  ];
+};
+
+const processStraightFlush = (
+  cards: Card[],
+  proposal: Int64[],
+): [Combination, Bool] => {
+  let first = pickCard(cards, proposal[0].magnitude); // First should be biggest. Should be checked on front
+  let second = pickCard(cards, proposal[1].magnitude);
+  let third = pickCard(cards, proposal[2].magnitude);
+  let fourth = pickCard(cards, proposal[3].magnitude);
+  let fifth = pickCard(cards, proposal[4].magnitude);
+  let color = first.color;
+
+  let expectedFirst = first.value;
+  let expectedSecond = expectedFirst.add(1);
+  let expectedThird = expectedSecond.add(1);
+  let expectedFourth = expectedThird.add(1);
+  let expectedFifth = expectedFourth.add(1);
+
+  return [
+    new Combination({ id: Combination.straightFlushId, value: first.value }),
+    second.color
+      .equals(color)
+      .and(third.color.equals(color))
+      .and(fourth.color.equals(color))
+      .and(fifth.color.equals(color))
+      .and(
+        second.value
+          .equals(expectedSecond)
+          .and(third.value.equals(expectedThird))
+          .and(fourth.value.equals(expectedFourth))
+          .and(fifth.value.equals(expectedFifth)),
+      ),
+  ];
+};
+
 interface CombVariant {
   id: UInt64;
   process: (cards: Card[], proposal: Int64[]) => [Combination, Bool];
@@ -51,8 +211,40 @@ interface CombVariant {
 
 const combVariants: CombVariant[] = [
   {
+    id: Combination.highId,
+    process: processHigh,
+  },
+  {
     id: Combination.pairId,
     process: processPair,
+  },
+  {
+    id: Combination.twoPairId,
+    process: processTwoPair,
+  },
+  {
+    id: Combination.threeId,
+    process: processThree,
+  },
+  {
+    id: Combination.straightId,
+    process: processStraight,
+  },
+  {
+    id: Combination.flushId,
+    process: processFlush,
+  },
+  {
+    id: Combination.fullHouseId,
+    process: processFullHouse,
+  },
+  {
+    id: Combination.fourId,
+    process: processFour,
+  },
+  {
+    id: Combination.straightFlushId,
+    process: processStraightFlush,
   },
 ];
 

@@ -238,7 +238,7 @@ export class Combination extends Struct({
   id: UInt64,
   value: UInt64,
 }) {
-  static high: UInt64 = UInt64.from(0);
+  static highId: UInt64 = UInt64.from(0);
   static pairId: UInt64 = UInt64.from(1);
   static twoPairId: UInt64 = UInt64.from(2);
   static threeId: UInt64 = UInt64.from(3);
@@ -247,7 +247,6 @@ export class Combination extends Struct({
   static fullHouseId: UInt64 = UInt64.from(6);
   static fourId: UInt64 = UInt64.from(7);
   static straightFlushId: UInt64 = UInt64.from(8);
-  static royalFlushId: UInt64 = UInt64.from(9);
 
   static zero(): Combination {
     return new Combination({ id: UInt64.zero, value: UInt64.zero });
