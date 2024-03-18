@@ -20,6 +20,7 @@ import {
 } from './DecryptProof';
 import {
   Card,
+  Combination,
   EncryptedCard,
   EncryptedDeck,
   GameIndex,
@@ -31,6 +32,7 @@ import {
   POKER_DECK_SIZE,
   UserActionIndex,
 } from './types';
+import { CombinationProof } from './CombProof';
 
 const MAX_PLAYERS = 2;
 
@@ -121,6 +123,8 @@ export class Poker extends MatchMaker {
         lastCardIndex: UInt64.zero,
         agrigatedPubKey,
         round: UInt64.zero,
+        highestCombinations: [...Array(6)].map(Combination.zero),
+        currentWinner: PublicKey.empty(),
       }),
     );
 
@@ -297,6 +301,32 @@ export class Poker extends MatchMaker {
       game.decLeft.greaterThan(UInt64.from(1)),
       game.decLeft.sub(decLeftSubValue),
       game.maxPlayers,
+    );
+
+    this.games.set(gameId, game);
+  }
+
+  @runtimeMethod()
+  public sendResult(gameId: UInt64, proof: CombinationProof) {
+    // #TODO check for user
+
+    let game = forceOptionValue(this.games.get(gameId));
+    proof.verify();
+
+    let compRes = Combination.arrComp(
+      proof.publicOutput.combinations,
+      game.highestCombinations,
+    );
+    game.highestCombinations = Provable.if(
+      compRes.isPositive(),
+      Provable.Array(Combination, 3),
+      proof.publicOutput.combinations,
+      game.highestCombinations,
+    );
+    game.currentWinner = Provable.if(
+      compRes.isPositive(),
+      this.transaction.sender.value,
+      game.currentWinner,
     );
 
     this.games.set(gameId, game);

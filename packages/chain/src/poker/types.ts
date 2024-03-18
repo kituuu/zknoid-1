@@ -1,10 +1,14 @@
-import { Bool, Group, Provable, Struct, UInt64, PublicKey } from 'o1js';
+import { Bool, Group, Provable, Struct, UInt64, PublicKey, Int64 } from 'o1js';
 import { Json } from 'o1js/dist/node/bindings/mina-transaction/gen/transaction';
 
 export const POKER_DECK_SIZE = 52;
 export const MIN_VALUE = 2;
 export const MAX_VALUE = 15;
 export const MAX_COLOR = 4;
+
+const boolToInt = (b: Bool): Int64 => {
+  return Provable.if(b, Int64.from(1), Int64.from(-1));
+};
 
 // May be do it not Struct. It is used only fo initialization and web
 export class Card extends Struct({
@@ -226,6 +230,44 @@ export class EncryptedDeck extends Struct({
   }
 }
 
+export class Combination extends Struct({
+  id: UInt64,
+  value: UInt64,
+}) {
+  static zero(): Combination {
+    return new Combination({ id: UInt64.zero, value: UInt64.zero });
+  }
+
+  static arrComp(v1: Combination[], v2: Combination[]): Int64 {
+    let decided = Bool(false);
+    let res = Int64.from(0);
+
+    for (let i = 0; i < v1.length; i++) {
+      let greater = v1[i].greaterThen(v2[i]);
+      let equal = v1[i].equals(v2[i]);
+      let newDecided = decided.or(equal.not());
+      res = Provable.if(
+        newDecided.equals(decided).not(),
+        boolToInt(greater),
+        res,
+      );
+      decided = decided.or(greater);
+    }
+
+    return res;
+  }
+
+  greaterThen(c: Combination): Bool {
+    return this.id
+      .greaterThan(c.id)
+      .or(this.id.equals(c.id).and(this.value.greaterThan(c.value)));
+  }
+
+  equals(c: Combination): Bool {
+    return this.id.equals(c.id).and(this.value.equals(c.value));
+  }
+}
+
 export enum GameStatus {
   SETUP,
   INITIAL_OPEN,
@@ -242,6 +284,8 @@ export class GameInfo extends Struct({
   lastCardIndex: UInt64,
   agrigatedPubKey: PublicKey,
   round: UInt64,
+  highestCombinations: Provable.Array(Combination, 6),
+  currentWinner: PublicKey,
 }) {
   nextTurn() {
     // Bypass protokit simulation with no state. In this case this.maxPlayers == 0, and fails
