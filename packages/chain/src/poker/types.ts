@@ -30,6 +30,10 @@ export class Card extends Struct({
     });
   }
 
+  getIndex(): UInt64 {
+    return this.value.mul(MAX_COLOR).add(this.color);
+  }
+
   toString(): string {
     return `Value: ${this.value.toString()}. Color: ${this.color.toString()}`;
   }
@@ -234,6 +238,17 @@ export class Combination extends Struct({
   id: UInt64,
   value: UInt64,
 }) {
+  static high: UInt64 = UInt64.from(0);
+  static pairId: UInt64 = UInt64.from(1);
+  static twoPairId: UInt64 = UInt64.from(2);
+  static threeId: UInt64 = UInt64.from(3);
+  static straightId: UInt64 = UInt64.from(4);
+  static flushId: UInt64 = UInt64.from(5);
+  static fullHouseId: UInt64 = UInt64.from(6);
+  static fourId: UInt64 = UInt64.from(7);
+  static straightFlushId: UInt64 = UInt64.from(8);
+  static royalFlushId: UInt64 = UInt64.from(9);
+
   static zero(): Combination {
     return new Combination({ id: UInt64.zero, value: UInt64.zero });
   }
