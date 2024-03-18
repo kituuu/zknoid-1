@@ -6,6 +6,8 @@ export const MIN_VALUE = 2;
 export const MAX_VALUE = 15;
 export const MAX_COLOR = 4;
 
+export const LAST_ROUND = 4;
+
 const boolToInt = (b: Bool): Int64 => {
   return Provable.if(b, Int64.from(1), Int64.from(-1));
 };
@@ -286,6 +288,7 @@ export enum GameStatus {
   SETUP,
   INITIAL_OPEN,
   GAME,
+  ENDING,
 }
 
 export class GameInfo extends Struct({
@@ -310,6 +313,32 @@ export class GameInfo extends Struct({
     );
 
     this.curPlayerIndex = this.curPlayerIndex.add(1).mod(modValue);
+  }
+
+  // Give it some normal name
+  next() {
+    this.round = Provable.if(
+      this.decLeft.equals(UInt64.from(1)),
+      this.round.add(1),
+      this.round,
+    );
+
+    this.status = Provable.if(
+      this.round.equals(UInt64.from(LAST_ROUND)),
+      UInt64.from(GameStatus.ENDING),
+      this.status,
+    );
+
+    let decLeftSubValue = Provable.if(
+      this.decLeft.greaterThan(UInt64.zero),
+      UInt64.from(1),
+      UInt64.zero,
+    );
+    this.decLeft = Provable.if(
+      this.decLeft.greaterThan(UInt64.from(1)),
+      this.decLeft.sub(decLeftSubValue),
+      this.maxPlayers,
+    );
   }
 }
 
