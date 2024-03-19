@@ -1,3 +1,4 @@
+import { StateMap } from '@proto-kit/protocol';
 import { Bool, Group, Provable, Struct, UInt64, PublicKey, Int64 } from 'o1js';
 import { Json } from 'o1js/dist/node/bindings/mina-transaction/gen/transaction';
 
@@ -7,6 +8,9 @@ export const MAX_VALUE = 15;
 export const MAX_COLOR = 4;
 
 export const LAST_ROUND = 4;
+export const MAX_PLAYERS = 2;
+
+export const INITAL_BALANCE = 100;
 
 const boolToInt = (b: Bool): Int64 => {
   return Provable.if(b, Int64.from(1), Int64.from(-1));
@@ -291,8 +295,16 @@ export enum GameStatus {
   ENDING,
 }
 
+export enum GameSubStatus {
+  NONE,
+  REVEAL,
+  BID,
+}
+
 export class GameInfo extends Struct({
+  id: UInt64,
   status: UInt64,
+  subStatus: UInt64,
   deck: EncryptedDeck,
   curPlayerIndex: UInt64, // Index of current player
   waitDecFrom: UInt64,
@@ -303,8 +315,9 @@ export class GameInfo extends Struct({
   round: UInt64,
   highestCombinations: Provable.Array(Combination, 6),
   currentWinner: PublicKey,
+  foldsAmount: UInt64,
 }) {
-  nextTurn() {
+  nextPlayer(isFold: StateMap<GameIndex, Bool>) {
     // Bypass protokit simulation with no state. In this case this.maxPlayers == 0, and fails
     let modValue = Provable.if(
       this.maxPlayers.greaterThan(UInt64.zero),
@@ -313,6 +326,20 @@ export class GameInfo extends Struct({
     );
 
     this.curPlayerIndex = this.curPlayerIndex.add(1).mod(modValue);
+
+    // Skip folded players
+    for (let i = 0; i < MAX_PLAYERS - 1; i++) {
+      let gameIndex = new GameIndex({
+        gameId: this.id,
+        index: this.curPlayerIndex,
+      });
+      let addValue = Provable.if(
+        isFold.get(gameIndex).value,
+        UInt64.from(1),
+        UInt64.zero,
+      );
+      this.curPlayerIndex = this.curPlayerIndex.add(addValue).mod(modValue);
+    }
   }
 
   // Give it some normal name
@@ -337,8 +364,16 @@ export class GameInfo extends Struct({
     this.decLeft = Provable.if(
       this.decLeft.greaterThan(UInt64.from(1)),
       this.decLeft.sub(decLeftSubValue),
-      this.maxPlayers,
+      this.maxPlayers.sub(this.foldsAmount),
     );
+  }
+
+  inBid(): Bool {
+    return this.subStatus.equals(UInt64.from(GameSubStatus.BID));
+  }
+
+  inReveal(): Bool {
+    return this.subStatus.equals(UInt64.from(GameSubStatus.REVEAL));
   }
 }
 

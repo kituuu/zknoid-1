@@ -26,6 +26,8 @@ import {
   GameIndex,
   GameInfo,
   GameStatus,
+  GameSubStatus,
+  INITAL_BALANCE,
   MAX_COLOR,
   MAX_VALUE,
   MIN_VALUE,
@@ -80,6 +82,16 @@ export class Poker extends MatchMaker {
     Bool,
   );
 
+  // gameId + userIndex => gameBalance
+  @state() public userBalance = StateMap.from<GameIndex, UInt64>(
+    GameIndex,
+    UInt64,
+  );
+  @state() public userBid = StateMap.from<GameIndex, UInt64>(GameIndex, UInt64);
+
+  // gameId + userIndex => folded or not
+  @state() public isFold = StateMap.from<GameIndex, Bool>(GameIndex, Bool);
+
   public override initGame(
     opponentReady: Bool,
     opponent: Option<QueueListItem>,
@@ -114,7 +126,9 @@ export class Poker extends MatchMaker {
     this.games.set(
       Provable.if(opponentReady, newId, UInt64.zero),
       new GameInfo({
+        id: newId,
         status: UInt64.from(GameStatus.SETUP),
+        subStatus: UInt64.from(GameSubStatus.NONE),
         deck: initialEnctyptedDeck,
         curPlayerIndex: UInt64.zero,
         waitDecFrom: UInt64.zero,
@@ -125,6 +139,7 @@ export class Poker extends MatchMaker {
         round: UInt64.zero,
         highestCombinations: [...Array(6)].map(Combination.zero),
         currentWinner: PublicKey.empty(),
+        foldsAmount: UInt64.zero,
       }),
     );
 
@@ -138,6 +153,16 @@ export class Poker extends MatchMaker {
           index: UInt64.from(i),
         }),
         players[i],
+      );
+    }
+
+    for (let i = 0; i < players.length; i++) {
+      this.userBalance.set(
+        new GameIndex({
+          gameId: newId,
+          index: UInt64.from(i),
+        }),
+        UInt64.from(INITAL_BALANCE),
       );
     }
 
@@ -178,7 +203,7 @@ export class Poker extends MatchMaker {
 
     // Update deck in games
     game.deck = shuffleProof.publicOutput.newDeck;
-    game.nextTurn();
+    game.nextPlayer(this.isFold);
     game.status = Provable.if(
       game.curPlayerIndex.equals(UInt64.from(0)), // turn returned to first player
       UInt64.from(GameStatus.INITIAL_OPEN),
@@ -236,6 +261,11 @@ export class Poker extends MatchMaker {
     }
 
     game.next();
+    game.subStatus = Provable.if(
+      game.round.equals(UInt64.from(1)),
+      UInt64.from(GameSubStatus.BID),
+      game.subStatus,
+    );
 
     this.games.set(gameId, game);
   }
@@ -245,6 +275,7 @@ export class Poker extends MatchMaker {
     let game = forceOptionValue(this.games.get(gameId));
     openProof.verify();
     // assert(game.deck.equals(openProof.publicInput.deck))
+    assert(game.inReveal());
 
     // Check indexes
     // let indexes = getRoundIndexes(game.round);
@@ -299,6 +330,18 @@ export class Poker extends MatchMaker {
     );
 
     this.games.set(gameId, game);
+  }
+
+  @runtimeMethod()
+  public bid(gameId: UInt64, amount: UInt64) {
+    // Get user
+    // Check that this it this user turn to bid
+    // Check that amount do not exceed user balance
+    // Check that amount greater or equal to previous bid
+    // Update bid information
+    // Change balances
+    // Move to next user
+    // Update phaze if needed
   }
 
   /*
