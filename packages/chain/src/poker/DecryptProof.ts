@@ -161,7 +161,7 @@ export const PublicOpen = Experimental.ZkProgram({
   publicInput: PublicOpenPublicInput,
   publicOutput: PublicOpenPublicOutput,
   methods: {
-    proveInitialOpen: {
+    provePublicOpen: {
       privateInputs: [PrivateKey],
       method: provePublicOpen,
     },
@@ -170,71 +170,81 @@ export const PublicOpen = Experimental.ZkProgram({
 
 export class PublicOpenProof extends Experimental.ZkProgram.Proof(PublicOpen) {}
 
+///////////////////////////////////// FoldProof //////////////////////////////////////
+
 /*
-export class PublicOpenPublicInput extends Struct({
+Upon fold you should open all card, that should be open. Unless other players would not be able 
+to find out their values.
+*/
+
+// #TODO refactor. Not its 90% copy. Reduce duplication
+
+export class FoldIndexes extends Struct({
+  values: Provable.Array(Int64, 5),
+}) {
+  static from(values: number[]): RoundIndexes {
+    return new RoundIndexes({
+      values: values.map((v: number) => Int64.from(v)),
+    });
+  }
+}
+
+export const getFoldIndexes = (round: UInt64): FoldIndexes => {
+  const firstTurn = FoldIndexes.from([0, 1, 2, 3, 4]);
+  const secondTurn = FoldIndexes.from([3, 4, -1, -1, -1]);
+  const thirdTurn = FoldIndexes.from([4, -1, -1, -1, -1]);
+  const isFirst = round.equals(UInt64.from(1));
+  const isSecond = round.equals(UInt64.from(2));
+  const isThird = round.equals(UInt64.from(3));
+
+  return Provable.switch([isFirst, isSecond, isThird], FoldIndexes, [
+    firstTurn,
+    secondTurn,
+    thirdTurn,
+  ]);
+};
+
+export class FoldProofPublicInput extends Struct({
   deck: EncryptedDeck,
+  round: UInt64,
 }) {}
 
-export class PublicOpenPublicOutput extends Struct({
+export class FoldProofPublicOutput extends Struct({
   decryptedValues: Provable.Array(Group, POKER_DECK_SIZE),
 }) {}
 
-// #TODO check if provable (should be ok)
-export const publicInitialOpen =
-  (cards: number[]) =>
-  (
-    publicInput: InitialOpenPublicInput,
-    pk: PrivateKey,
-  ): InitialOpenPublicOutput => {
-    let decryptedValues: Group[] = Array(POKER_DECK_SIZE).fill(Group.zero);
+export const proveFold = (
+  publicInput: FoldProofPublicInput,
+  pk: PrivateKey,
+): FoldProofPublicOutput => {
+  let decryptedValues: Group[] = Array(POKER_DECK_SIZE).fill(Group.zero);
 
-    for (const card of cards) {
-      // #TODO Array access is not provable. Change to provable version
-      decryptedValues[card] = decryptOne(
-        pk,
-        publicInput.deck.cards[card].value[0],
-      );
-    }
+  let indexes = getFoldIndexes(publicInput.round).values;
 
-    return new InitialOpenPublicOutput({ decryptedValues });
-  };
+  for (let i = 0; i < indexes.length; i++) {
+    let index = indexes[i];
+    let val = Provable.if(index.isPositive(), index, Int64.from(0));
+    let numVal = +val.toString();
+    // #TODO Array access is not provable. Change to provable version
+    let decrypted = decryptOne(pk, publicInput.deck.cards[numVal].value[0]);
+    decryptedValues[numVal] = Provable.if(
+      index.isPositive(),
+      decrypted,
+      Group.zero,
+    );
+  }
+  return new FoldProofPublicOutput({ decryptedValues });
+};
 
-export const FlopOpen = Experimental.ZkProgram({
-  publicInput: InitialOpenPublicInput,
-  publicOutput: InitialOpenPublicOutput,
+export const FoldApp = Experimental.ZkProgram({
+  publicInput: FoldProofPublicInput,
+  publicOutput: FoldProofPublicOutput,
   methods: {
-    proveInitialOpen: {
+    proveFold: {
       privateInputs: [PrivateKey],
-      method: publicInitialOpen([0, 1, 2]),
+      method: proveFold,
     },
   },
 });
 
-export class FlopOpenProof extends Experimental.ZkProgram.Proof(FlopOpen) {}
-
-export const TurnOpen = Experimental.ZkProgram({
-  publicInput: InitialOpenPublicInput,
-  publicOutput: InitialOpenPublicOutput,
-  methods: {
-    proveInitialOpen: {
-      privateInputs: [PrivateKey],
-      method: publicInitialOpen([3]),
-    },
-  },
-});
-
-export class TurnOpenProof extends Experimental.ZkProgram.Proof(TurnOpen) {}
-
-export const RiverOpen = Experimental.ZkProgram({
-  publicInput: InitialOpenPublicInput,
-  publicOutput: InitialOpenPublicOutput,
-  methods: {
-    proveInitialOpen: {
-      privateInputs: [PrivateKey],
-      method: publicInitialOpen([4]),
-    },
-  },
-});
-
-export class RiverOpenProof extends Experimental.ZkProgram.Proof(TurnOpen) {}
-*/
+export class FoldProof extends Experimental.ZkProgram.Proof(FoldApp) {}

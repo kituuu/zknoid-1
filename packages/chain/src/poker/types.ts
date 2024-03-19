@@ -370,7 +370,7 @@ export class GameInfo extends Struct({
     );
   }
 
-  checktAndTransistToReveal(userBids: StateMap<GameIndex, UInt64>): void {
+  checkAndTransistToReveal(userBids: StateMap<GameIndex, UInt64>): void {
     let curUserBid = userBids.get(
       new GameIndex({ gameId: this.id, index: this.curPlayerIndex }),
     ).value;

@@ -15,6 +15,7 @@ import {
 import { ShuffleProof } from './ShuffleProof';
 import {
   DecryptProof,
+  FoldProof,
   InitialOpenProof,
   PublicOpenProof,
 } from './DecryptProof';
@@ -313,6 +314,7 @@ export class Poker extends MatchMaker {
     // #TODO check for user
 
     let game = forceOptionValue(this.games.get(gameId));
+    // Add proof check
     proof.verify();
 
     let compRes = Combination.arrComp(
@@ -375,11 +377,64 @@ export class Poker extends MatchMaker {
     game.nextPlayer(this.isFold);
 
     // Update phaze if needed
-    game.checktAndTransistToReveal(this.userBid);
+    game.checkAndTransistToReveal(this.userBid);
+
+    this.games.set(gameId, game);
   }
 
   // @runtimeMethod()
-  // public fold(gameId: UInt64, amount: FoldProof) {}
+  public fold(gameId: UInt64, foldProof: FoldProof) {
+    let game = forceOptionValue(this.games.get(gameId));
+
+    // Add profe check
+    foldProof.verify();
+
+    // Get user
+    let sender = this.getSender(Bool(true));
+    // Check that this it this user turn to bid
+
+    let currentPlayer = this.getUserByIndex(gameId, game.curPlayerIndex);
+
+    // Check if right player runing setup
+    assert(currentPlayer.equals(sender), 'Wrong player to bid');
+
+    const decryptedValues = foldProof.publicOutput.decryptedValues;
+
+    for (let i = 0; i < POKER_DECK_SIZE; i++) {
+      let prevNumOfEncryption = game.deck.cards[i].numOfEncryption;
+      // Workaround protokit simulation with no state
+      let subValue = Provable.if(
+        prevNumOfEncryption
+          .greaterThan(UInt64.zero)
+          .and(decryptedValues[i].equals(Group.zero).not()),
+        UInt64.from(1),
+        UInt64.zero,
+      );
+      game.deck.cards[i].value[2] = game.deck.cards[i].value[2].add(
+        decryptedValues[i],
+      );
+      game.deck.cards[i].numOfEncryption =
+        game.deck.cards[i].numOfEncryption.sub(subValue);
+    }
+
+    let userIndex = new GameIndex({
+      gameId,
+      index: game.curPlayerIndex,
+    });
+
+    this.isFold.set(userIndex, Bool(true));
+    game.foldsAmount = game.foldsAmount.add(1);
+
+    game.nextPlayer(this.isFold);
+
+    // Update phaze if needed
+    game.checkAndTransistToReveal(this.userBid);
+  }
+
+  @runtimeMethod()
+  public claimWin(gameId: UInt64) {
+    // In case others folded
+  }
 
   /*
   @runtimeMethod()
