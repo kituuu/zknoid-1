@@ -271,4 +271,15 @@ export class MatchMaker extends RuntimeModule<MatchMakerConfig> {
 
     this.balances.addBalance(winner, this.gameFund.get(gameId).value);
   }
+
+  protected getSender(allowSession: Bool) {
+    const sessionSender = this.sessions.get(this.transaction.sender.value);
+    const sender = Provable.if(
+      allowSession.and(sessionSender.isSome),
+      sessionSender.value,
+      this.transaction.sender.value,
+    );
+
+    return sender;
+  }
 }

@@ -316,6 +316,8 @@ export class GameInfo extends Struct({
   highestCombinations: Provable.Array(Combination, 6),
   currentWinner: PublicKey,
   foldsAmount: UInt64,
+  curBid: UInt64,
+  bank: UInt64,
 }) {
   nextPlayer(isFold: StateMap<GameIndex, Bool>) {
     // Bypass protokit simulation with no state. In this case this.maxPlayers == 0, and fails
@@ -366,6 +368,21 @@ export class GameInfo extends Struct({
       this.decLeft.sub(decLeftSubValue),
       this.maxPlayers.sub(this.foldsAmount),
     );
+  }
+
+  checktAndTransistToReveal(userBids: StateMap<GameIndex, UInt64>): void {
+    let curUserBid = userBids.get(
+      new GameIndex({ gameId: this.id, index: this.curPlayerIndex }),
+    ).value;
+
+    let bidFinished = curUserBid.equals(this.curBid);
+    this.subStatus = Provable.if(
+      bidFinished,
+      UInt64.from(GameSubStatus.REVEAL),
+      this.subStatus,
+    );
+
+    this.curBid = Provable.if(bidFinished, UInt64.zero, this.curBid);
   }
 
   inBid(): Bool {

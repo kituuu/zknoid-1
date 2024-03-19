@@ -140,6 +140,8 @@ export class Poker extends MatchMaker {
         highestCombinations: [...Array(6)].map(Combination.zero),
         currentWinner: PublicKey.empty(),
         foldsAmount: UInt64.zero,
+        curBid: UInt64.zero,
+        bank: UInt64.zero,
       }),
     );
 
@@ -334,15 +336,50 @@ export class Poker extends MatchMaker {
 
   @runtimeMethod()
   public bid(gameId: UInt64, amount: UInt64) {
+    let game = forceOptionValue(this.games.get(gameId));
+
     // Get user
+    let sender = this.getSender(Bool(true));
     // Check that this it this user turn to bid
+
+    let currentPlayer = this.getUserByIndex(gameId, game.curPlayerIndex);
+
+    // Check if right player runing setup
+    assert(currentPlayer.equals(sender), 'Wrong player to bid');
+
     // Check that amount do not exceed user balance
+    let userIndex = new GameIndex({
+      gameId,
+      index: game.curPlayerIndex,
+    });
+    let userBalance = forceOptionValue(this.userBalance.get(userIndex));
+    assert(
+      userBalance.greaterThanOrEqual(amount),
+      'Bid amount exceed user balance',
+    );
+
     // Check that amount greater or equal to previous bid
+    assert(
+      amount.greaterThanOrEqual(game.curBid),
+      'Amount less then previous bid',
+    );
     // Update bid information
+    game.curBid = amount;
+    this.userBid.set(userIndex, amount);
+
     // Change balances
+    this.userBalance.set(userIndex, userBalance.sub(amount));
+    game.bank = game.bank.add(amount);
+
     // Move to next user
+    game.nextPlayer(this.isFold);
+
     // Update phaze if needed
+    game.checktAndTransistToReveal(this.userBid);
   }
+
+  // @runtimeMethod()
+  // public fold(gameId: UInt64, amount: FoldProof) {}
 
   /*
   @runtimeMethod()
