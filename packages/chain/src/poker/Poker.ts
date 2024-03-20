@@ -26,6 +26,7 @@ import {
   EncryptedDeck,
   GameIndex,
   GameInfo,
+  GameMeta,
   GameStatus,
   GameSubStatus,
   INITAL_BALANCE,
@@ -33,7 +34,9 @@ import {
   MAX_VALUE,
   MIN_VALUE,
   POKER_DECK_SIZE,
+  RoundInfo,
   UserActionIndex,
+  WinnerInfo,
 } from './types';
 import { CombinationProof } from './CombProof';
 
@@ -123,26 +126,20 @@ export class Poker extends MatchMaker {
     ];
 
     let agrigatedPubKey = this.getAgrigatedPubKey(pubKeyList);
+    let maxPlayers = UInt64.from(2);
 
     this.games.set(
       Provable.if(opponentReady, newId, UInt64.zero),
       new GameInfo({
-        id: newId,
+        meta: new GameMeta({
+          id: newId,
+          maxPlayers, // Change depending on opponents count. For now only 2 players
+        }),
         status: UInt64.from(GameStatus.SETUP),
-        subStatus: UInt64.from(GameSubStatus.NONE),
         deck: initialEnctyptedDeck,
-        curPlayerIndex: UInt64.zero,
-        waitDecFrom: UInt64.zero,
-        decLeft: UInt64.from(2),
-        maxPlayers: UInt64.from(2), // Change depending on opponents count. For now only 2 players
-        lastCardIndex: UInt64.zero,
         agrigatedPubKey,
-        round: UInt64.zero,
-        highestCombinations: [...Array(6)].map(Combination.zero),
-        currentWinner: PublicKey.empty(),
-        foldsAmount: UInt64.zero,
-        curBid: UInt64.zero,
-        bank: UInt64.zero,
+        round: RoundInfo.initial(maxPlayers),
+        winnerInfo: WinnerInfo.initial(),
       }),
     );
 
@@ -195,7 +192,7 @@ export class Poker extends MatchMaker {
     // Check that game in setup status
     assert(game.status.equals(UInt64.from(GameStatus.SETUP)));
 
-    let currentPlayer = this.getUserByIndex(gameId, game.curPlayerIndex);
+    let currentPlayer = this.getUserByIndex(gameId, game.round.curPlayerIndex);
 
     // Check if right player runing setup
     assert(currentPlayer.equals(sender));
@@ -208,7 +205,7 @@ export class Poker extends MatchMaker {
     game.deck = shuffleProof.publicOutput.newDeck;
     game.nextPlayer(this.isFold);
     game.status = Provable.if(
-      game.curPlayerIndex.equals(UInt64.from(0)), // turn returned to first player
+      game.round.curPlayerIndex.equals(UInt64.from(0)), // turn returned to first player
       UInt64.from(GameStatus.INITIAL_OPEN),
       game.status,
     );
@@ -264,10 +261,10 @@ export class Poker extends MatchMaker {
     }
 
     game.next();
-    game.subStatus = Provable.if(
-      game.round.equals(UInt64.from(1)),
+    game.round.subStatus = Provable.if(
+      game.round.index.equals(UInt64.from(1)),
       UInt64.from(GameSubStatus.BID),
-      game.subStatus,
+      game.round.subStatus,
     );
 
     this.games.set(gameId, game);
@@ -283,7 +280,7 @@ export class Poker extends MatchMaker {
     // Check indexes
     // let indexes = getRoundIndexes(game.round);
 
-    assert(openProof.publicInput.round.equals(game.round));
+    assert(openProof.publicInput.round.equals(game.round.index));
 
     const decryptedValues = openProof.publicOutput.decryptedValues;
 
@@ -319,18 +316,18 @@ export class Poker extends MatchMaker {
 
     let compRes = Combination.arrComp(
       proof.publicOutput.combinations,
-      game.highestCombinations,
+      game.winnerInfo.highestCombinations,
     );
-    game.highestCombinations = Provable.if(
+    game.winnerInfo.highestCombinations = Provable.if(
       compRes.isPositive(),
       Provable.Array(Combination, 3),
       proof.publicOutput.combinations,
-      game.highestCombinations,
+      game.winnerInfo.highestCombinations,
     );
-    game.currentWinner = Provable.if(
+    game.winnerInfo.currentWinner = Provable.if(
       compRes.isPositive(),
       this.transaction.sender.value,
-      game.currentWinner,
+      game.winnerInfo.currentWinner,
     );
 
     this.games.set(gameId, game);
@@ -344,7 +341,7 @@ export class Poker extends MatchMaker {
     let sender = this.getSender(Bool(true));
     // Check that this it this user turn to bid
 
-    let currentPlayer = this.getUserByIndex(gameId, game.curPlayerIndex);
+    let currentPlayer = this.getUserByIndex(gameId, game.round.curPlayerIndex);
 
     // Check if right player runing setup
     assert(currentPlayer.equals(sender), 'Wrong player to bid');
@@ -352,7 +349,7 @@ export class Poker extends MatchMaker {
     // Check that amount do not exceed user balance
     let userIndex = new GameIndex({
       gameId,
-      index: game.curPlayerIndex,
+      index: game.round.curPlayerIndex,
     });
     let userBalance = forceOptionValue(this.userBalance.get(userIndex));
     assert(
@@ -362,16 +359,16 @@ export class Poker extends MatchMaker {
 
     // Check that amount greater or equal to previous bid
     assert(
-      amount.greaterThanOrEqual(game.curBid),
+      amount.greaterThanOrEqual(game.round.curBid),
       'Amount less then previous bid',
     );
     // Update bid information
-    game.curBid = amount;
+    game.round.curBid = amount;
     this.userBid.set(userIndex, amount);
 
     // Change balances
     this.userBalance.set(userIndex, userBalance.sub(amount));
-    game.bank = game.bank.add(amount);
+    game.round.bank = game.round.bank.add(amount);
 
     // Move to next user
     game.nextPlayer(this.isFold);
@@ -393,7 +390,7 @@ export class Poker extends MatchMaker {
     let sender = this.getSender(Bool(true));
     // Check that this it this user turn to bid
 
-    let currentPlayer = this.getUserByIndex(gameId, game.curPlayerIndex);
+    let currentPlayer = this.getUserByIndex(gameId, game.round.curPlayerIndex);
 
     // Check if right player runing setup
     assert(currentPlayer.equals(sender), 'Wrong player to bid');
@@ -419,11 +416,11 @@ export class Poker extends MatchMaker {
 
     let userIndex = new GameIndex({
       gameId,
-      index: game.curPlayerIndex,
+      index: game.round.curPlayerIndex,
     });
 
     this.isFold.set(userIndex, Bool(true));
-    game.foldsAmount = game.foldsAmount.add(1);
+    game.round.foldsAmount = game.round.foldsAmount.add(1);
 
     game.nextPlayer(this.isFold);
 
@@ -435,70 +432,6 @@ export class Poker extends MatchMaker {
   public claimWin(gameId: UInt64) {
     // In case others folded
   }
-
-  /*
-  @runtimeMethod()
-  public drawCard(gameId: UInt64) {
-    let game = forceOptionValue(this.games.get(gameId));
-    let currentPlayer = this.getUserByIndex(gameId, game.curPlayerIndex);
-
-    // Check if right player runing setup
-    assert(currentPlayer.equals(this.transaction.sender.value));
-
-    this.kardToPlayer.set(
-      new GameIndex({
-        gameId,
-        index: game.lastCardIndex,
-      }),
-      this.transaction.sender.value,
-    );
-
-    game.lastCardIndex = game.lastCardIndex.add(1);
-    game.nextTurn();
-  }
-  */
-
-  // Do not check for recall.
-  @runtimeMethod()
-  public decryptCard(
-    gameId: UInt64,
-    cardId: UInt64,
-    decryptProof: DecryptProof,
-  ) {
-    let game = forceOptionValue(this.games.get(gameId));
-    let card = game.deck.cards[+cardId.toString()]; // Unprovable. Change to provable version
-    assert(card.value[0].equals(decryptProof.publicInput.m0));
-
-    decryptProof.verify();
-    game.deck.cards[+cardId.toString()].value[2] = game.deck.cards[
-      +cardId.toString()
-    ].value[2].add(decryptProof.publicOutput.decryptedPart);
-
-    let prevNumOfEncryption =
-      game.deck.cards[+cardId.toString()].numOfEncryption;
-    // Workaround protokit simulation with no state
-    let subValue = Provable.if(
-      prevNumOfEncryption.greaterThan(UInt64.zero),
-      UInt64.from(1),
-      UInt64.zero,
-    );
-
-    game.deck.cards[+cardId.toString()].numOfEncryption =
-      game.deck.cards[+cardId.toString()].numOfEncryption.sub(subValue);
-    this.games.set(gameId, game);
-  }
-
-  // // #TODO check if array is provable. Change if it is not
-  // @runtimeMethod()
-  // public decryptMultipleCards(
-  //     gameId: UInt64,
-  //     cardsId: UInt64[],
-  //     decryptProofs: DecryptProof[]
-  // ) {
-  //     for (let i = 0; i < cardsId.length; i++) {
-  //         this.decryptCard(gameId, cardsId[i], decryptProofs[i]);
-  //     }
-  // }
 
   private getUserByIndex(gameId: UInt64, index: UInt64): PublicKey {
     return forceOptionValue(

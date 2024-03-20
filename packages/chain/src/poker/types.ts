@@ -301,96 +301,131 @@ export enum GameSubStatus {
   BID,
 }
 
-export class GameInfo extends Struct({
-  id: UInt64,
-  status: UInt64,
-  subStatus: UInt64,
-  deck: EncryptedDeck,
-  curPlayerIndex: UInt64, // Index of current player
-  waitDecFrom: UInt64,
-  decLeft: UInt64,
-  maxPlayers: UInt64,
-  lastCardIndex: UInt64,
-  agrigatedPubKey: PublicKey,
-  round: UInt64,
+export class WinnerInfo extends Struct({
   highestCombinations: Provable.Array(Combination, 6),
   currentWinner: PublicKey,
+}) {
+  static initial(): WinnerInfo {
+    return new WinnerInfo({
+      highestCombinations: [...Array(6)].map(Combination.zero),
+      currentWinner: PublicKey.empty(),
+    });
+  }
+}
+
+export class GameMeta extends Struct({
+  id: UInt64,
+  maxPlayers: UInt64,
+}) {}
+
+export class RoundInfo extends Struct({
+  index: UInt64,
+  subStatus: UInt64,
+  curPlayerIndex: UInt64,
+  decLeft: UInt64,
   foldsAmount: UInt64,
   curBid: UInt64,
   bank: UInt64,
 }) {
+  static initial(maxPlayers: UInt64): RoundInfo {
+    return new RoundInfo({
+      index: UInt64.zero,
+      subStatus: UInt64.from(GameSubStatus.NONE),
+      curPlayerIndex: UInt64.zero,
+      decLeft: maxPlayers,
+      foldsAmount: UInt64.zero,
+      curBid: UInt64.zero,
+      bank: UInt64.zero,
+    });
+  }
+}
+
+export class GameInfo extends Struct({
+  meta: GameMeta,
+  status: UInt64,
+  deck: EncryptedDeck,
+  agrigatedPubKey: PublicKey,
+  round: RoundInfo,
+  winnerInfo: WinnerInfo,
+}) {
   nextPlayer(isFold: StateMap<GameIndex, Bool>) {
     // Bypass protokit simulation with no state. In this case this.maxPlayers == 0, and fails
     let modValue = Provable.if(
-      this.maxPlayers.greaterThan(UInt64.zero),
-      this.maxPlayers,
+      this.meta.maxPlayers.greaterThan(UInt64.zero),
+      this.meta.maxPlayers,
       UInt64.from(1),
     );
 
-    this.curPlayerIndex = this.curPlayerIndex.add(1).mod(modValue);
+    this.round.curPlayerIndex = this.round.curPlayerIndex.add(1).mod(modValue);
 
     // Skip folded players
     for (let i = 0; i < MAX_PLAYERS - 1; i++) {
       let gameIndex = new GameIndex({
-        gameId: this.id,
-        index: this.curPlayerIndex,
+        gameId: this.meta.id,
+        index: this.round.curPlayerIndex,
       });
       let addValue = Provable.if(
         isFold.get(gameIndex).value,
         UInt64.from(1),
         UInt64.zero,
       );
-      this.curPlayerIndex = this.curPlayerIndex.add(addValue).mod(modValue);
+      this.round.curPlayerIndex = this.round.curPlayerIndex
+        .add(addValue)
+        .mod(modValue);
     }
   }
 
   // Give it some normal name
   next() {
-    this.round = Provable.if(
-      this.decLeft.equals(UInt64.from(1)),
-      this.round.add(1),
-      this.round,
+    this.round.index = Provable.if(
+      this.round.decLeft.equals(UInt64.from(1)),
+      this.round.index.add(1),
+      this.round.index,
     );
 
     this.status = Provable.if(
-      this.round.equals(UInt64.from(LAST_ROUND)),
+      this.round.index.equals(UInt64.from(LAST_ROUND)),
       UInt64.from(GameStatus.ENDING),
       this.status,
     );
 
     let decLeftSubValue = Provable.if(
-      this.decLeft.greaterThan(UInt64.zero),
+      this.round.decLeft.greaterThan(UInt64.zero),
       UInt64.from(1),
       UInt64.zero,
     );
-    this.decLeft = Provable.if(
-      this.decLeft.greaterThan(UInt64.from(1)),
-      this.decLeft.sub(decLeftSubValue),
-      this.maxPlayers.sub(this.foldsAmount),
+    this.round.decLeft = Provable.if(
+      this.round.decLeft.greaterThan(UInt64.from(1)),
+      this.round.decLeft.sub(decLeftSubValue),
+      this.meta.maxPlayers.sub(this.round.foldsAmount),
     );
   }
 
   checkAndTransistToReveal(userBids: StateMap<GameIndex, UInt64>): void {
     let curUserBid = userBids.get(
-      new GameIndex({ gameId: this.id, index: this.curPlayerIndex }),
+      new GameIndex({ gameId: this.meta.id, index: this.round.curPlayerIndex }),
     ).value;
 
-    let bidFinished = curUserBid.equals(this.curBid);
-    this.subStatus = Provable.if(
+    let bidFinished = curUserBid.equals(this.round.curBid);
+    this.round.subStatus = Provable.if(
       bidFinished,
       UInt64.from(GameSubStatus.REVEAL),
-      this.subStatus,
+      this.round.subStatus,
     );
 
-    this.curBid = Provable.if(bidFinished, UInt64.zero, this.curBid);
+    this.round.curBid = Provable.if(
+      bidFinished,
+      UInt64.zero,
+      this.round.curBid,
+    );
   }
 
   inBid(): Bool {
-    return this.subStatus.equals(UInt64.from(GameSubStatus.BID));
+    return this.round.subStatus.equals(UInt64.from(GameSubStatus.BID));
   }
 
   inReveal(): Bool {
-    return this.subStatus.equals(UInt64.from(GameSubStatus.REVEAL));
+    return this.round.subStatus.equals(UInt64.from(GameSubStatus.REVEAL));
   }
 }
 
