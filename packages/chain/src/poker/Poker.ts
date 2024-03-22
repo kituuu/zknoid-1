@@ -1,6 +1,7 @@
 import { Option, State, StateMap, assert } from '@proto-kit/protocol';
 import { MatchMaker, QueueListItem } from '../engine/MatchMaker';
 import { state, runtimeMethod, runtimeModule } from '@proto-kit/module';
+import { UInt64 as ProtoUInt64 } from '@proto-kit/library';
 import {
   Bool,
   Experimental,
@@ -27,6 +28,7 @@ import {
   GameIndex,
   GameInfo,
   GameMeta,
+  GameRoundIndex,
   GameStatus,
   GameSubStatus,
   INITAL_BALANCE,
@@ -91,7 +93,10 @@ export class Poker extends MatchMaker {
     GameIndex,
     UInt64,
   );
-  @state() public userBid = StateMap.from<GameIndex, UInt64>(GameIndex, UInt64);
+  @state() public userBid = StateMap.from<GameRoundIndex, UInt64>(
+    GameRoundIndex,
+    UInt64,
+  );
 
   // gameId + userIndex => folded or not
   @state() public isFold = StateMap.from<GameIndex, Bool>(GameIndex, Bool);
@@ -261,11 +266,6 @@ export class Poker extends MatchMaker {
     }
 
     game.next();
-    game.round.subStatus = Provable.if(
-      game.round.index.equals(UInt64.from(1)),
-      UInt64.from(GameSubStatus.BID),
-      game.round.subStatus,
-    );
 
     this.games.set(gameId, game);
   }
@@ -351,6 +351,13 @@ export class Poker extends MatchMaker {
       gameId,
       index: game.round.curPlayerIndex,
     });
+
+    let userRoundIndex = new GameRoundIndex({
+      gameId,
+      round: game.round.index,
+      index: game.round.curPlayerIndex,
+    });
+
     let userBalance = forceOptionValue(this.userBalance.get(userIndex));
     assert(
       userBalance.greaterThanOrEqual(amount),
@@ -364,11 +371,17 @@ export class Poker extends MatchMaker {
     );
     // Update bid information
     game.round.curBid = amount;
-    this.userBid.set(userIndex, amount);
+    this.userBid.set(userRoundIndex, amount);
 
     // Change balances
-    this.userBalance.set(userIndex, userBalance.sub(amount));
-    game.round.bank = game.round.bank.add(amount);
+    // Workaround protokit hard check. It is ok, due to previous check, but should be changed aniway, because its ugly
+    let subAmount = Provable.if(
+      userBalance.greaterThanOrEqual(amount),
+      amount,
+      UInt64.zero,
+    );
+    this.userBalance.set(userIndex, userBalance.sub(subAmount));
+    game.round.bank = game.round.bank.add(subAmount);
 
     // Move to next user
     game.nextPlayer(this.isFold);
@@ -455,5 +468,9 @@ export class Poker extends MatchMaker {
     );
 
     return value;
+  }
+
+  protected override getParticipationPrice() {
+    return ProtoUInt64.from(0);
   }
 }

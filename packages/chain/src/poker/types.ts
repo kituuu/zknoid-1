@@ -377,8 +377,38 @@ export class GameInfo extends Struct({
 
   // Give it some normal name
   next() {
+    let decLeftSubValue = Provable.if(
+      this.round.decLeft.greaterThan(UInt64.zero),
+      UInt64.from(1),
+      UInt64.zero,
+    );
+
+    this.round.subStatus = Provable.if(
+      this.round.decLeft.greaterThan(UInt64.from(1)),
+      this.round.subStatus,
+      UInt64.from(GameSubStatus.BID),
+    );
+
+    this.round.decLeft = Provable.if(
+      this.round.decLeft.greaterThan(UInt64.from(1)),
+      this.round.decLeft.sub(decLeftSubValue),
+      this.meta.maxPlayers.sub(this.round.foldsAmount),
+    );
+  }
+
+  checkAndTransistToReveal(userBids: StateMap<GameRoundIndex, UInt64>): void {
+    let curUserBid = userBids.get(
+      new GameRoundIndex({
+        gameId: this.meta.id,
+        round: this.round.index,
+        index: this.round.curPlayerIndex,
+      }),
+    ).value;
+
+    let bidFinished = curUserBid.equals(this.round.curBid);
+
     this.round.index = Provable.if(
-      this.round.decLeft.equals(UInt64.from(1)),
+      bidFinished,
       this.round.index.add(1),
       this.round.index,
     );
@@ -389,24 +419,6 @@ export class GameInfo extends Struct({
       this.status,
     );
 
-    let decLeftSubValue = Provable.if(
-      this.round.decLeft.greaterThan(UInt64.zero),
-      UInt64.from(1),
-      UInt64.zero,
-    );
-    this.round.decLeft = Provable.if(
-      this.round.decLeft.greaterThan(UInt64.from(1)),
-      this.round.decLeft.sub(decLeftSubValue),
-      this.meta.maxPlayers.sub(this.round.foldsAmount),
-    );
-  }
-
-  checkAndTransistToReveal(userBids: StateMap<GameIndex, UInt64>): void {
-    let curUserBid = userBids.get(
-      new GameIndex({ gameId: this.meta.id, index: this.round.curPlayerIndex }),
-    ).value;
-
-    let bidFinished = curUserBid.equals(this.round.curBid);
     this.round.subStatus = Provable.if(
       bidFinished,
       UInt64.from(GameSubStatus.REVEAL),
@@ -431,6 +443,12 @@ export class GameInfo extends Struct({
 
 export class GameIndex extends Struct({
   gameId: UInt64,
+  index: UInt64,
+}) {}
+
+export class GameRoundIndex extends Struct({
+  gameId: UInt64,
+  round: UInt64,
   index: UInt64,
 }) {}
 
