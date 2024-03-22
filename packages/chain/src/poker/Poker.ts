@@ -318,9 +318,10 @@ export class Poker extends MatchMaker {
       proof.publicOutput.combinations,
       game.winnerInfo.highestCombinations,
     );
+
     game.winnerInfo.highestCombinations = Provable.if(
       compRes.isPositive(),
-      Provable.Array(Combination, 3),
+      Provable.Array(Combination, 6),
       proof.publicOutput.combinations,
       game.winnerInfo.highestCombinations,
     );

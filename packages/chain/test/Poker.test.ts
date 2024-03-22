@@ -1,11 +1,13 @@
 import { AppChain, TestingAppChain } from '@proto-kit/sdk';
-import { Field, PrivateKey, PublicKey, UInt64 } from 'o1js';
+import { Field, Int64, PrivateKey, PublicKey, UInt64 } from 'o1js';
 import { log } from '@proto-kit/common';
 import { Pickles } from 'o1js/dist/node/snarky';
 import { dummyBase64Proof } from 'o1js/dist/node/lib/proof_system';
 import {
   Balances,
+  Combination,
   GameInfo,
+  GameStatus,
   POKER_DECK_SIZE,
   PermutationMatrix,
   Poker,
@@ -25,6 +27,13 @@ import {
   provePublicOpen,
 } from '../src/poker/DecryptProof';
 import { Runtime } from '@proto-kit/module';
+import {
+  CombProposal,
+  CombPublicInput,
+  CombinationProof,
+  proveCombinations,
+} from '../src/poker/CombProof';
+import { error } from 'console';
 
 log.setLevel('ERROR');
 
@@ -184,6 +193,81 @@ const sendNextOpen = async (
   await appChain.produceBlock();
 };
 
+interface ICombination {
+  id: number;
+  indexes: number[];
+}
+
+const sendCombinations = async (
+  appChain: TestingAppChain<any, any>,
+  poker: Poker,
+  game: GameInfo,
+  senderPrivateKey: PrivateKey,
+  combinations: ICombination[],
+  playerIndex: number,
+) => {
+  if (combinations.length > 6) {
+    throw Error('To much combinations');
+  }
+
+  appChain.setSigner(senderPrivateKey);
+  let sender = senderPrivateKey.toPublicKey();
+
+  const fillIndexesToFull = (arr: number[]): number[] => {
+    if (arr.length > 5) {
+      throw error('To much elements for combination');
+    }
+    let emptyAmount = 5 - arr.length;
+
+    return arr.concat(...Array(emptyAmount).fill(-1));
+  };
+
+  let combinationProposals = combinations.map(
+    (combination) =>
+      new CombProposal({
+        proposedComb: UInt64.from(combination.id),
+        indexes: fillIndexesToFull(combination.indexes).map((elem) =>
+          Int64.from(elem),
+        ),
+      }),
+  );
+
+  let emptyProposalsLeft = 6 - combinationProposals.length;
+  combinationProposals.push(
+    ...Array(emptyProposalsLeft).fill(CombProposal.empty()),
+  );
+
+  let encryptedCardsPrepared = game.deck.cards
+    .slice(0, 5)
+    .concat(
+      game.deck.cards.slice(5 + 2 * playerIndex, 5 + 2 * playerIndex + 2),
+    );
+  encryptedCardsPrepared[5].decrypt(senderPrivateKey);
+  encryptedCardsPrepared[6].decrypt(senderPrivateKey);
+
+  let cardsPrepared = encryptedCardsPrepared.map((ec) => ec.toCard());
+
+  let publicInput = new CombPublicInput({
+    encryptedCards: encryptedCardsPrepared,
+    cards: cardsPrepared,
+    combinationProposals,
+  });
+
+  let publiOutput = proveCombinations(publicInput);
+
+  let proof = await mockProof(publiOutput, CombinationProof, publicInput);
+
+  {
+    const tx = await appChain.transaction(sender, () => {
+      poker.sendResult(game.meta.id, proof);
+    });
+    await tx.sign();
+    await tx.send();
+  }
+
+  await appChain.produceBlock();
+};
+
 describe('game hub', () => {
   it.skip('Log proof', async () => {
     console.log(await dummyBase64Proof());
@@ -278,8 +362,6 @@ describe('game hub', () => {
     expect(game.round.index.equals(UInt64.from(1)).toBoolean()).toBeTruthy();
 
     // Second turn - Fourth turns
-
-    // for (let i = 1; i < 3; i++) {s
     for (let i = 1; i < 4; i++) {
       let round = UInt64.from(i);
       game = await getGame();
@@ -299,7 +381,62 @@ describe('game hub', () => {
       await sendBid(appChain, poker, game, bobPrivateKey, UInt64.from(1));
     }
 
+    // Combinations proofs:
+    //    First player: 4th and highest card
+    //    Second player: 4th and highest card
+
+    // First
+    let firstCombinations: ICombination[] = [
+      {
+        id: +Combination.fourId.toString(),
+        indexes: [0, 1, 2, 3],
+      },
+      {
+        id: +Combination.highId,
+        indexes: [6],
+      },
+    ];
+
+    let secondCombinations = [
+      {
+        id: +Combination.fourId.toString(),
+        indexes: [0, 1, 2, 3],
+      },
+      {
+        id: +Combination.highId,
+        indexes: [8],
+      },
+    ];
+
     game = await getGame();
+
+    await sendCombinations(
+      appChain,
+      poker,
+      game,
+      alicePrivateKey,
+      firstCombinations,
+      0,
+    );
+
+    game = await getGame();
+    expect(
+      game.winnerInfo.currentWinner.equals(alice).toBoolean(),
+    ).toBeTruthy();
+
+    await sendCombinations(
+      appChain,
+      poker,
+      game,
+      bobPrivateKey,
+      secondCombinations,
+      1,
+    );
+
+    game = await getGame();
+    expect(game.winnerInfo.currentWinner.equals(bob).toBoolean()).toBeTruthy();
+
+    expect(+game.status.toString()).toBe(GameStatus.ENDING);
     // Wining
   }, 100000);
 });

@@ -1,5 +1,5 @@
 import { Bool, Experimental, Int64, Provable, Struct, UInt64 } from 'o1js';
-import { Card, Combination } from './types';
+import { Card, Combination, EncryptedCard } from './types';
 import assert from 'assert';
 
 // Can be done without proof, if needed
@@ -7,12 +7,19 @@ import assert from 'assert';
 export class CombProposal extends Struct({
   proposedComb: UInt64,
   indexes: Provable.Array(Int64, 5),
-}) {}
+}) {
+  static empty(): CombProposal {
+    return new CombProposal({
+      proposedComb: Combination.emptyId,
+      indexes: [...Array(5).fill(Int64.from(-1))],
+    });
+  }
+}
 
 export class CombPublicInput extends Struct({
-  encryptedCards: Provable.Array(Card, 7),
+  encryptedCards: Provable.Array(EncryptedCard, 7),
   cards: Provable.Array(Card, 7),
-  combinationProposal: Provable.Array(CombProposal, 6),
+  combinationProposals: Provable.Array(CombProposal, 6),
 }) {}
 
 export class CombPublicOutput extends Struct({
@@ -32,6 +39,13 @@ const pickCard = (cards: Card[], index: UInt64): Card => {
   }
 
   return card;
+};
+
+const processEmpty = (
+  cards: Card[],
+  proposal: Int64[],
+): [Combination, Bool] => {
+  return [Combination.zero(), Bool(true)];
 };
 
 const processHigh = (cards: Card[], proposal: Int64[]): [Combination, Bool] => {
@@ -206,10 +220,14 @@ const processStraightFlush = (
 
 interface CombVariant {
   id: UInt64;
-  process: (cards: Card[], proposal: Int64[]) => [Combination, Bool];
+  process: (cards: Card[], proposal: Int64[]) => [Combination, Bool]; // Refactor to struct
 }
 
 const combVariants: CombVariant[] = [
+  {
+    id: Combination.emptyId,
+    process: processEmpty,
+  },
   {
     id: Combination.highId,
     process: processHigh,
@@ -279,7 +297,7 @@ const processProposal = (
   return Provable.switch(splitted[0], Combination, splitted[1]);
 };
 
-export const proveCombintations = (
+export const proveCombinations = (
   publicInput: CombPublicInput,
 ): CombPublicOutput => {
   // Check that card is decrypted right
@@ -287,7 +305,7 @@ export const proveCombintations = (
   // Check that combinationProposal do not have duplicate items
 
   return new CombPublicOutput({
-    combinations: publicInput.combinationProposal.map((proposal) =>
+    combinations: publicInput.combinationProposals.map((proposal) =>
       processProposal(publicInput.cards, proposal),
     ),
   });
@@ -297,9 +315,9 @@ export const CombinationApp = Experimental.ZkProgram({
   publicInput: CombPublicInput,
   publicOutput: CombPublicOutput,
   methods: {
-    proveInitialOpen: {
+    proveCombinations: {
       privateInputs: [],
-      method: proveCombintations,
+      method: proveCombinations,
     },
   },
 });

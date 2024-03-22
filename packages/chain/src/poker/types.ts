@@ -1,6 +1,16 @@
 import { StateMap } from '@proto-kit/protocol';
-import { Bool, Group, Provable, Struct, UInt64, PublicKey, Int64 } from 'o1js';
+import {
+  Bool,
+  Group,
+  Provable,
+  Struct,
+  UInt64,
+  PublicKey,
+  Int64,
+  PrivateKey,
+} from 'o1js';
 import { Json } from 'o1js/dist/node/bindings/mina-transaction/gen/transaction';
+import { decryptOne } from '../engine/ElGamal';
 
 export const POKER_DECK_SIZE = 52;
 export const MIN_VALUE = 2;
@@ -104,6 +114,14 @@ export class EncryptedCard extends Struct({
       numOfEncryption: UInt64.zero,
     });
   }
+  static fromJSONString(data: string): EncryptedCard {
+    let { v1, v2, v3, numOfEncryption } = JSON.parse(data);
+
+    return new EncryptedCard({
+      value: [Group.fromJSON(v1), Group.fromJSON(v2), Group.fromJSON(v3)],
+      numOfEncryption: UInt64.fromJSON(numOfEncryption),
+    });
+  }
 
   // !Equals do not check this.value[2]!
   equals(ec: EncryptedCard): Bool {
@@ -148,13 +166,10 @@ export class EncryptedCard extends Struct({
     });
   }
 
-  static fromJSONString(data: string): EncryptedCard {
-    let { v1, v2, v3, numOfEncryption } = JSON.parse(data);
-
-    return new EncryptedCard({
-      value: [Group.fromJSON(v1), Group.fromJSON(v2), Group.fromJSON(v3)],
-      numOfEncryption: UInt64.fromJSON(numOfEncryption),
-    });
+  // No checking!
+  decrypt(sk: PrivateKey) {
+    this.value[2] = this.value[2].add(decryptOne(sk, this.value[0]));
+    this.numOfEncryption = this.numOfEncryption.sub(UInt64.from(1));
   }
 
   toCard(): Card {
@@ -244,18 +259,19 @@ export class Combination extends Struct({
   id: UInt64,
   value: UInt64,
 }) {
-  static highId: UInt64 = UInt64.from(0);
-  static pairId: UInt64 = UInt64.from(1);
-  static twoPairId: UInt64 = UInt64.from(2);
-  static threeId: UInt64 = UInt64.from(3);
-  static straightId: UInt64 = UInt64.from(4);
-  static flushId: UInt64 = UInt64.from(5);
-  static fullHouseId: UInt64 = UInt64.from(6);
-  static fourId: UInt64 = UInt64.from(7);
-  static straightFlushId: UInt64 = UInt64.from(8);
+  static emptyId: UInt64 = UInt64.zero;
+  static highId: UInt64 = UInt64.from(1);
+  static pairId: UInt64 = UInt64.from(2);
+  static twoPairId: UInt64 = UInt64.from(3);
+  static threeId: UInt64 = UInt64.from(4);
+  static straightId: UInt64 = UInt64.from(5);
+  static flushId: UInt64 = UInt64.from(6);
+  static fullHouseId: UInt64 = UInt64.from(7);
+  static fourId: UInt64 = UInt64.from(8);
+  static straightFlushId: UInt64 = UInt64.from(9);
 
   static zero(): Combination {
-    return new Combination({ id: UInt64.zero, value: UInt64.zero });
+    return new Combination({ id: Combination.emptyId, value: UInt64.zero });
   }
 
   static arrComp(v1: Combination[], v2: Combination[]): Int64 {
