@@ -5,16 +5,16 @@ export class EncryptedCardBase extends Struct({
   value: Provable.Array(Group, 3),
   numOfEncryption: UInt64,
 }) {
-  static zero(): EncryptedCardBase {
-    return new EncryptedCardBase({
+  static zero<T extends EncryptedCardBase>(): T {
+    return <T>new EncryptedCardBase({
       value: [Group.zero, Group.zero, Group.zero],
       numOfEncryption: UInt64.zero,
     });
   }
-  static fromJSONString(data: string): EncryptedCardBase {
+  static fromJSONString<T extends EncryptedCardBase>(data: string): T {
     let { v1, v2, v3, numOfEncryption } = JSON.parse(data);
 
-    return new EncryptedCardBase({
+    return <T>new EncryptedCardBase({
       value: [Group.fromJSON(v1), Group.fromJSON(v2), Group.fromJSON(v3)],
       numOfEncryption: UInt64.fromJSON(numOfEncryption),
     });
@@ -69,4 +69,6 @@ export class EncryptedCardBase extends Struct({
     this.value[2] = this.value[2].add(decryptOne(sk, this.value[0]));
     this.numOfEncryption = this.numOfEncryption.sub(UInt64.from(1));
   }
+
+  toCard() {}
 }

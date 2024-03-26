@@ -1,11 +1,14 @@
-import { Field, Group, Struct, UInt64 } from 'o1js';
+import { Field, Group, Provable, Struct, UInt64 } from 'o1js';
 import { EncryptedCardBase } from './EncryptedCardBase';
 import { ICard } from './interfaces/ICard';
 import { toEncryptedCardHelper } from './CardBase';
 import { IEncrypedCard } from './interfaces/IEncryptedCard';
+import { EncryptedDeckBase } from './DeckBase';
 
 const POKER_MAX_COLOR = 4;
 const POKER_MAX_VALUE = 15;
+const POKER_MIN_VALUE = 2;
+const POKER_DECK_SIZE = (POKER_MAX_VALUE - POKER_MIN_VALUE) * POKER_MAX_COLOR;
 
 export class PokerCard
   extends Struct({
@@ -61,3 +64,7 @@ class PokerEncryptedCard
     });
   }
 }
+
+class PokerEncryptedDeck extends EncryptedDeckBase(PokerEncryptedCard, {
+  cards: Provable.Array(PokerEncryptedCard, POKER_DECK_SIZE),
+}) {}
