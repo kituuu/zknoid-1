@@ -2,6 +2,7 @@ import {
   Experimental,
   Field,
   Group,
+  PrivateKey,
   Provable,
   PublicKey,
   Struct,
@@ -12,7 +13,7 @@ import { ICard } from './interfaces/ICard';
 import { toEncryptedCardHelper } from './CardBase';
 import { IEncrypedCard } from './interfaces/IEncryptedCard';
 import { EncryptedDeckBase } from './DeckBase';
-import { convertToMesage, encrypt } from '../ElGamal';
+import { convertToMesage, decryptOne, encrypt } from '../ElGamal';
 import { getPermutationMatrix } from './Permutation';
 
 const POKER_MAX_COLOR = 4;
@@ -81,6 +82,8 @@ class PokerEncryptedDeck extends EncryptedDeckBase(PokerEncryptedCard, {
 
 class PokerPermutationMatrix extends getPermutationMatrix(POKER_DECK_SIZE) {}
 
+//////////////////////////////////////// Shuffle /////////////////////////////////////////
+
 export class ShuffleProofPublicInput extends Struct({
   initialDeck: PokerEncryptedDeck,
   agrigatedPubKey: PublicKey,
@@ -144,3 +147,36 @@ export const PokerShuffleApp = Experimental.ZkProgram({
 export class ShuffleProof extends Experimental.ZkProgram.Proof(
   PokerShuffleApp,
 ) {}
+
+////////////////////////////////////// Decrypt /////////////////////////////////////
+
+export class DecryptProofPublicInput extends Struct({
+  m0: Group,
+}) {}
+export class DecryptProofPublicOutput extends Struct({
+  decryptedPart: Group,
+}) {}
+
+export const proveDecrypt = (
+  publicInput: DecryptProofPublicInput,
+  pk: PrivateKey,
+): DecryptProofPublicOutput => {
+  let decryptedPart = decryptOne(pk, publicInput.m0);
+
+  return new DecryptProofPublicOutput({
+    decryptedPart,
+  });
+};
+
+export const Decrypt = Experimental.ZkProgram({
+  publicInput: DecryptProofPublicInput,
+  publicOutput: DecryptProofPublicOutput,
+  methods: {
+    decrypt: {
+      privateInputs: [PrivateKey],
+      method: proveDecrypt,
+    },
+  },
+});
+
+export class DecryptProof extends Experimental.ZkProgram.Proof(Decrypt) {}
