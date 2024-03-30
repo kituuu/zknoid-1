@@ -28,7 +28,7 @@ interface T1 {
   numOfEncryption: UInt64;
   value: [Group, Group, Group];
 }
-
+/*
 export function createProof<
   C extends Struct<any>,
   EC extends Struct<C> & {
@@ -98,6 +98,7 @@ export function createProof<
 
   class ShuffleProof extends Experimental.ZkProgram.Proof(Shuffle) {}
 }
+*/
 
 // export class ShuffleProofPublicInput extends Struct({
 //   initialDeck: EncryptedDeck,
