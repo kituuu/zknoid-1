@@ -64,6 +64,10 @@ export class EncryptedCardBase extends Struct({
     });
   }
 
+  addDecryption(decPart: Group): void {
+    this.value[0] = this.value[0].add(decPart);
+  }
+
   // No checking, that the private key is valid. So it should be made outside
   decrypt(sk: PrivateKey) {
     this.value[2] = this.value[2].add(decryptOne(sk, this.value[0]));
