@@ -18,20 +18,19 @@ class BasicGame extends Struct({
 export class CardGameBase<
   C extends ICard<EC>,
   EC extends IEncrypedCard<C>,
+  ED extends IEncrypedDeck,
   G extends IGame,
-> extends RuntimeModule<unknown> {
-  @state() public games = StateMap.from<UInt64, IGame>(UInt64, BasicGame);
+> extends RuntimeModule<{}> {
+  @state() public games = StateMap.from<UInt64, any>(UInt64, BasicGame);
 
-  private shuffle(
-    shuffleProof: Proof<any, { newDeck: IEncrypedDeck }>,
-  ): IEncrypedDeck {
+  protected _shuffle(shuffleProof: Proof<any, { newDeck: ED }>): ED {
     // #TODO add checks
     shuffleProof.verify();
 
     return shuffleProof.publicOutput.newDeck;
   }
 
-  private decrypt(
+  protected _decrypt(
     encryptedCard: IEncrypedCard<any>,
     decryptProof: Proof<any, { decryptedPart: Group }>,
   ) {
@@ -40,11 +39,11 @@ export class CardGameBase<
     encryptedCard.addDecryption(decryptProof.publicOutput.decryptedPart);
   }
 
-  private open(
+  protected _open(
     encryptedCard: IEncrypedCard<any>,
     decryptProof: Proof<any, { decryptedPart: Group }>,
   ): C {
-    this.decrypt(encryptedCard, decryptProof);
+    this._decrypt(encryptedCard, decryptProof);
 
     return encryptedCard.toCard();
   }

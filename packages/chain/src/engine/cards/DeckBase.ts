@@ -13,8 +13,8 @@ export function EncryptedDeckBase<C, EC extends IEncrypedCard<C>>(
   fields: {
     cards: any;
   },
+  deckSize: number,
 ) {
-  const deckSize = fields.cards.length;
   return class EncryptedDeckBase extends Struct(fields) {
     static fromJSONString<T extends EncryptedDeckBase>(data: string): T {
       let cards: EC[] = [];
@@ -48,7 +48,9 @@ export function EncryptedDeckBase<C, EC extends IEncrypedCard<C>>(
 
     applyPermutation(permutation: IPermutationMatrix): EncryptedDeckBase {
       if (deckSize != permutation.getSize()) {
-        throw Error('deckSize is not equal to permutation size');
+        throw Error(
+          `deckSize is not equal to permutation size ${deckSize} != ${permutation.getSize()}`,
+        );
       }
 
       let final = EncryptedDeckBase.fromJSONString(this.toJSONString()); // Is it proper copy for proof?

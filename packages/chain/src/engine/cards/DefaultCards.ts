@@ -41,7 +41,7 @@ export class PokerCard
   }
 }
 
-class PokerEncryptedCard
+export class PokerEncryptedCard
   extends EncryptedCardBase
   implements IEncrypedCard<PokerCard>
 {
@@ -76,11 +76,17 @@ class PokerEncryptedCard
   }
 }
 
-class PokerEncryptedDeck extends EncryptedDeckBase(PokerEncryptedCard, {
-  cards: Provable.Array(PokerEncryptedCard, POKER_DECK_SIZE),
-}) {}
+export class PokerEncryptedDeck extends EncryptedDeckBase(
+  PokerEncryptedCard,
+  {
+    cards: Provable.Array(PokerEncryptedCard, POKER_DECK_SIZE),
+  },
+  POKER_DECK_SIZE,
+) {}
 
-class PokerPermutationMatrix extends getPermutationMatrix(POKER_DECK_SIZE) {}
+export class PokerPermutationMatrix extends getPermutationMatrix(
+  POKER_DECK_SIZE,
+) {}
 
 //////////////////////////////////////// Shuffle /////////////////////////////////////////
 
@@ -144,7 +150,7 @@ export const PokerShuffleApp = Experimental.ZkProgram({
   },
 });
 
-export class ShuffleProof extends Experimental.ZkProgram.Proof(
+export class PokerShuffleProof extends Experimental.ZkProgram.Proof(
   PokerShuffleApp,
 ) {}
 
@@ -179,4 +185,4 @@ export const Decrypt = Experimental.ZkProgram({
   },
 });
 
-export class DecryptProof extends Experimental.ZkProgram.Proof(Decrypt) {}
+export class PokerDecryptProof extends Experimental.ZkProgram.Proof(Decrypt) {}
