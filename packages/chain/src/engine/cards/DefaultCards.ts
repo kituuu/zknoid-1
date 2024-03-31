@@ -173,7 +173,7 @@ export class PokerEncryptedCard
     }
 
     // if (!found) {
-    //     throw Error('Card cannot be decrypted');
+    //   throw Error('Card cannot be decrypted');
     // }
 
     return new PokerCard({
@@ -270,6 +270,17 @@ const initialEnctyptedDeck = new PokerEncryptedDeck({
     return new PokerEncryptedCard({
       value: convertToMesage(value),
       numOfEncryption: UInt64.zero,
+    });
+  }),
+});
+
+export const initialEnctyptedPokerDeck = new PokerEncryptedDeck({
+  cards: [...Array(52).keys()].flatMap((value) => {
+    return [...Array(4).keys()].map((color) => {
+      return new PokerCard({
+        value: UInt64.from(value + 2),
+        color: UInt64.from(color),
+      }).toEncryptedCard();
     });
   }),
 });

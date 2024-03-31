@@ -36,6 +36,12 @@ export function getPermutationMatrix(size: number) {
       return new PermutationMatrix({ value: permutateArray(initital.value) });
     }
 
+    // Not provable. Should not be used inside circuits
+    swap(i: number, j: number): PermutationMatrix {
+      [this.value[i], this.value[j]] = [this.value[j], this.value[i]];
+      return this;
+    }
+
     getSize(): number {
       return size;
     }

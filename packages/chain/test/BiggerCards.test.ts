@@ -16,6 +16,7 @@ import {
   PokerPermutationMatrix,
   PokerShuffleProof,
   ShuffleProofPublicInput,
+  initialEnctyptedPokerDeck,
   proveDecrypt,
   shuffle,
 } from '../src/engine/cards/DefaultCards';
@@ -55,18 +56,18 @@ const sendShuffle = async (
 ) => {
   appChain.setSigner(senderPrivateKey);
   let sender = senderPrivateKey.toPublicKey();
+  let initialDeck = game.encryptedDeck.cards[0].numOfEncryption
+    .equals(UInt64.zero)
+    .toBoolean()
+    ? (game.encryptedDeck = initialEnctyptedPokerDeck)
+    : game.encryptedDeck;
   let shuffleInput = new ShuffleProofPublicInput({
-    initialDeck: game.encryptedDeck,
+    initialDeck,
     agrigatedPubKey: game.agrigatedPublicKey,
   });
 
   let noises = [...Array(52)].map(() => Field.from(1));
   let shuffleOutput = shuffle(shuffleInput, permutation, noises);
-
-  // console.log(game.agrigatedPublicKey.x.toString());
-  // console.log('Test: ', game.encryptedDeck.cards[0].value[0].x.toString());
-  // console.log(shuffleOutput.newDeck.cards[0].value[0].x.toString());
-  // console.log(shuffleOutput.newDeck.cards[1].value[0].x.toString());
 
   let shuffleProof = await mockProof(
     shuffleOutput,
@@ -99,7 +100,7 @@ const openCards = async (
   });
 
   let openInput2 = new DecryptProofPublicInput({
-    m0: game.encryptedDeck.cards[2].value[0],
+    m0: game.encryptedDeck.cards[1].value[0],
   });
 
   let openOutput1 = proveDecrypt(openInput1, senderPrivateKey);
@@ -153,7 +154,10 @@ describe('bigger card', () => {
     await tx.send();
 
     let block = await appChain.produceBlock();
-    expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
+    let game = await appChain.query.runtime.BiggerCard.games.get(gameId);
+    expect(block!.transactions[0].status.toBoolean()).toBeTruthy();
+    expect(game!.id.equals(gameId).toBoolean()).toBeTruthy();
+    expect(game!.firstPlayer.toBase58()).toBe(alice.toBase58());
 
     appChain.setSigner(bobPrivateKey);
     tx = await appChain.transaction(bob, () => {
@@ -166,27 +170,21 @@ describe('bigger card', () => {
     block = await appChain.produceBlock();
     expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
 
-    let game = await appChain.query.runtime.BiggerCard.games.get(gameId);
+    game = await appChain.query.runtime.BiggerCard.games.get(gameId);
+
+    expect(game?.secondPlayer.toBase58()).toBe(bob.toBase58());
 
     expect(game?.status.equals(GameStatuses.INIT)).toBeTruthy();
-
-    console.log(
-      `Num of encryptions before shuffle: ${game?.encryptedDeck.cards[0].numOfEncryption}`,
-    );
 
     await sendShuffle(
       appChain,
       biggerCard,
       game!,
-      PokerPermutationMatrix.getZeroMatrix(),
+      PokerPermutationMatrix.getZeroMatrix().swap(0, 51),
       alicePrivateKey,
     );
 
     game = await appChain.query.runtime.BiggerCard.games.get(gameId);
-
-    console.log(
-      `Num of encryptions after first shuffle: ${game?.encryptedDeck.cards[0].numOfEncryption}`,
-    );
 
     await sendShuffle(
       appChain,
@@ -198,14 +196,30 @@ describe('bigger card', () => {
 
     game = await appChain.query.runtime.BiggerCard.games.get(gameId);
 
-    console.log(
-      `Num of encryptions after second shuffle: ${game?.encryptedDeck.cards[0].numOfEncryption}`,
-    );
-
     await openCards(appChain, biggerCard, game!, alicePrivateKey);
 
-    // game = await appChain.query.runtime.BiggerCard.games.get(gameId);
+    game = await appChain.query.runtime.BiggerCard.games.get(gameId);
 
-    // await openCards(appChain, biggerCard, game!, bobPrivateKey);
+    await openCards(appChain, biggerCard, game!, bobPrivateKey);
+
+    game = await appChain.query.runtime.BiggerCard.games.get(gameId);
+
+    console.log(game?.encryptedDeck.cards[0].toCard().toString());
+    console.log(game?.encryptedDeck.cards[1].toCard().toString());
+
+    appChain.setSigner(alicePrivateKey);
+    tx = await appChain.transaction(alice, () => {
+      biggerCard.pickWinner(gameId);
+    });
+
+    await tx.sign();
+    await tx.send();
+
+    block = await appChain.produceBlock();
+    expect(block!.transactions[0].status.toBoolean()).toBeTruthy();
+
+    game = await appChain.query.runtime.BiggerCard.games.get(gameId);
+
+    expect(game!.winner.equals(alice).toBoolean()).toBeTruthy();
   });
 });

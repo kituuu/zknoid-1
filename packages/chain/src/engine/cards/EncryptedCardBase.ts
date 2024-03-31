@@ -65,7 +65,14 @@ export class EncryptedCardBase extends Struct({
   }
 
   addDecryption(decPart: Group): void {
-    this.value[0] = this.value[0].add(decPart);
+    this.value[2] = this.value[2].add(decPart);
+    let subValue = Provable.if(
+      // UInt64 shoud be replaced by Protokit UInt64, but for now we have this workaround
+      this.numOfEncryption.greaterThan(UInt64.zero),
+      UInt64.from(1),
+      UInt64.zero,
+    );
+    this.numOfEncryption = this.numOfEncryption.sub(subValue);
   }
 
   // No checking, that the private key is valid. So it should be made outside

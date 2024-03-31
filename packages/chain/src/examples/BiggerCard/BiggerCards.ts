@@ -13,6 +13,7 @@ import {
   PokerEncryptedCard,
   PokerEncryptedDeck,
   PokerShuffleProof,
+  initialEnctyptedPokerDeck,
 } from '../../engine/cards/DefaultCards';
 
 export const GameStatuses = {
@@ -58,13 +59,13 @@ export class BiggerCard
   public participate(gameId: UInt64) {
     // Game game from contract
     let game = this.games.get(gameId).value;
-    // console.log(game);
 
     // Check that staus is init
     expect(game.status.equals(GameStatuses.INIT));
 
     // Add sender private key to agrigated public key
     const sender = this.transaction.sender.value;
+    // console.log('Sender ', sender.toBase58());
 
     let pubKey = Provable.if(
       game.agrigatedPublicKey.isEmpty(),
@@ -91,8 +92,9 @@ export class BiggerCard
       sender,
       game.secondPlayer,
     );
-
     game.id = gameId;
+
+    // game.encryptedDeck = initialEnctyptedPokerDeck cases firstPlayer and secondPlayer to not change. WTF????
 
     game.next();
 
@@ -108,24 +110,9 @@ export class BiggerCard
     // #TODO add checks
     const newEncryptedDeck = this._shuffle(shuffleProof);
 
-    // console.log(
-    //   'Prev: ',
-    //   game.encryptedDeck.cards[0].numOfEncryption.toString(),
-    // );
-    // console.log('New: ', newEncryptedDeck.cards[0].numOfEncryption.toString());
-
     game.encryptedDeck = newEncryptedDeck;
 
-    // console.log('Contract');
-    // console.log(game.encryptedDeck.cards[0].value[0].x.toString());
-    // console.log(game.encryptedDeck.cards[0].numOfEncryption.toString());
-
     game.next();
-
-    console.log(
-      'New: ',
-      game.encryptedDeck.cards[0].numOfEncryption.toString(),
-    );
 
     this.games.set(gameId, game);
   }
@@ -150,21 +137,15 @@ export class BiggerCard
   @runtimeMethod()
   public pickWinner(gameId: UInt64) {
     let game = this.games.get(gameId).value;
-
     expect(game.status.equals(GameStatuses.FINISHED));
-
     const firstCard = game.encryptedDeck.cards[0];
     const secondCard = game.encryptedDeck.cards[1];
-
     const firstCardDecoded = firstCard.toCard();
     const secondCardDecoded = secondCard.toCard();
-
     const firstWin = firstCardDecoded.value.greaterThanOrEqual(
       secondCardDecoded.value,
     );
-
     game.winner = Provable.if(firstWin, game.firstPlayer, game.secondPlayer);
-
     this.games.set(gameId, game);
   }
 }
