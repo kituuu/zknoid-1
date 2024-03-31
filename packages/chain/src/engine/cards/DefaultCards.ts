@@ -41,7 +41,7 @@ export class PokerCard
     return `Value: ${this.value.toString()}. Color: ${this.color.toString()}`;
   }
 }
-
+/*
 export class PokerEncryptedCard extends Struct({
   value: [Group, Group, Group],
   numOfEncryption: UInt64,
@@ -145,8 +145,8 @@ export class PokerEncryptedCard extends Struct({
     });
   }
 }
+*/
 
-/*
 // This is how it suppose to be done. But currently there is some porblems with types
 export class PokerEncryptedCard
   extends EncryptedCardBase
@@ -182,8 +182,8 @@ export class PokerEncryptedCard
     });
   }
 }
-*/
 
+/*
 export class PokerEncryptedDeck extends Struct({
   cards: Provable.Array(PokerEncryptedCard, POKER_DECK_SIZE),
 }) {
@@ -239,8 +239,8 @@ export class PokerEncryptedDeck extends Struct({
     return final;
   }
 }
+*/
 
-/*
 // This is how it should be implemented. But again some problems with types
 export class PokerEncryptedDeck extends EncryptedDeckBase(
   PokerEncryptedCard,
@@ -249,7 +249,6 @@ export class PokerEncryptedDeck extends EncryptedDeckBase(
   },
   POKER_DECK_SIZE,
 ) {}
-*/
 
 export class PokerPermutationMatrix extends getPermutationMatrix(
   POKER_DECK_SIZE,

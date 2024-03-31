@@ -21,7 +21,7 @@ export class CardGameBase<
   ED extends IEncrypedDeck,
   G extends IGame,
 > extends RuntimeModule<{}> {
-  @state() public games = StateMap.from<UInt64, any>(UInt64, BasicGame);
+  // @state() public games = StateMap.from<UInt64, any>(UInt64, BasicGame);
 
   protected _shuffle(shuffleProof: Proof<any, { newDeck: ED }>): ED {
     // #TODO add checks

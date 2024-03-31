@@ -52,13 +52,13 @@ export class BiggerCard
   extends CardGameBase<PokerCard, PokerEncryptedCard, PokerEncryptedDeck, Game>
   implements RuntimeModule<{}>
 {
-  @state() public games = StateMap.from<UInt64, Game>(UInt64, Game as any); // ?
+  @state() public games = StateMap.from<UInt64, Game>(UInt64, Game as any);
 
   @runtimeMethod()
   public participate(gameId: UInt64) {
     // Game game from contract
     let game = this.games.get(gameId).value;
-    console.log(game);
+    // console.log(game);
 
     // Check that staus is init
     expect(game.status.equals(GameStatuses.INIT));
@@ -92,6 +92,8 @@ export class BiggerCard
       game.secondPlayer,
     );
 
+    game.id = gameId;
+
     game.next();
 
     this.games.set(gameId, game);
@@ -106,13 +108,24 @@ export class BiggerCard
     // #TODO add checks
     const newEncryptedDeck = this._shuffle(shuffleProof);
 
+    // console.log(
+    //   'Prev: ',
+    //   game.encryptedDeck.cards[0].numOfEncryption.toString(),
+    // );
+    // console.log('New: ', newEncryptedDeck.cards[0].numOfEncryption.toString());
+
     game.encryptedDeck = newEncryptedDeck;
 
-    console.log('Contract');
-    console.log(game.encryptedDeck.cards[0].value[0].x.toString());
-    console.log(game.encryptedDeck.cards[0].numOfEncryption.toString());
+    // console.log('Contract');
+    // console.log(game.encryptedDeck.cards[0].value[0].x.toString());
+    // console.log(game.encryptedDeck.cards[0].numOfEncryption.toString());
 
     game.next();
+
+    console.log(
+      'New: ',
+      game.encryptedDeck.cards[0].numOfEncryption.toString(),
+    );
 
     this.games.set(gameId, game);
   }
@@ -146,7 +159,7 @@ export class BiggerCard
     const firstCardDecoded = firstCard.toCard();
     const secondCardDecoded = secondCard.toCard();
 
-    const firstWin = firstCardDecoded.value.greaterThenOrEqual(
+    const firstWin = firstCardDecoded.value.greaterThanOrEqual(
       secondCardDecoded.value,
     );
 
