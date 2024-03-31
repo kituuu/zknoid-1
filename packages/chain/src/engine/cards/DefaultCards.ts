@@ -1,4 +1,5 @@
 import {
+  Bool,
   Experimental,
   Field,
   Group,
@@ -41,6 +42,112 @@ export class PokerCard
   }
 }
 
+export class PokerEncryptedCard extends Struct({
+  value: [Group, Group, Group],
+  numOfEncryption: UInt64,
+}) {
+  static zero(): PokerEncryptedCard {
+    return new PokerEncryptedCard({
+      value: [Group.zero, Group.zero, Group.zero],
+      numOfEncryption: UInt64.zero,
+    });
+  }
+  static fromJSONString<T extends PokerEncryptedCard>(data: string): T {
+    let { v1, v2, v3, numOfEncryption } = JSON.parse(data);
+
+    return <T>new PokerEncryptedCard({
+      value: [Group.fromJSON(v1), Group.fromJSON(v2), Group.fromJSON(v3)],
+      numOfEncryption: UInt64.fromJSON(numOfEncryption),
+    });
+  }
+
+  // !Equals do not check this.value[2]!
+  equals(ec: PokerEncryptedCard): Bool {
+    return this.value[0]
+      .equals(ec.value[0])
+      .and(this.value[1].equals(ec.value[1]))
+      .and(this.numOfEncryption.equals(ec.numOfEncryption));
+  }
+
+  toJSONString(): string {
+    let v1 = this.value[0].toJSON();
+    let v2 = this.value[1].toJSON();
+    let v3 = this.value[2].toJSON();
+    let numOfEncryption = this.numOfEncryption.toJSON();
+
+    return JSON.stringify({ v1, v2, v3, numOfEncryption });
+  }
+
+  copy(): PokerEncryptedCard {
+    return PokerEncryptedCard.fromJSONString(this.toJSONString());
+  }
+
+  // Used for permutation. Do not make sense otherwise. num can be only 0 or 1
+  mul(num: UInt64): PokerEncryptedCard {
+    num.assertLessThan(UInt64.from(2));
+    return Provable.if(
+      num.equals(UInt64.zero),
+      PokerEncryptedCard,
+      PokerEncryptedCard.zero(),
+      this,
+    ) as PokerEncryptedCard;
+  }
+
+  // Used for permutation. Do not make sense otherwise
+  add(ec: PokerEncryptedCard): PokerEncryptedCard {
+    return new PokerEncryptedCard({
+      value: [
+        this.value[0].add(ec.value[0]),
+        this.value[1].add(ec.value[1]),
+        this.value[2].add(ec.value[2]),
+      ],
+      numOfEncryption: this.numOfEncryption.add(ec.numOfEncryption),
+    });
+  }
+
+  addDecryption(decPart: Group): void {
+    this.value[0] = this.value[0].add(decPart);
+  }
+
+  // No checking, that the private key is valid. So it should be made outside
+  decrypt(sk: PrivateKey) {
+    this.value[2] = this.value[2].add(decryptOne(sk, this.value[0]));
+    this.numOfEncryption = this.numOfEncryption.sub(UInt64.from(1));
+  }
+
+  toCard(): PokerCard {
+    this.numOfEncryption.assertEquals(UInt64.zero);
+
+    let groupVal = this.value[1].sub(this.value[2]);
+    let curV = Group.generator;
+    let value = 0;
+    let color = 0;
+    let found = false;
+    for (let i = 0; i < POKER_MAX_VALUE * POKER_MAX_COLOR; i++) {
+      if (curV.equals(groupVal).toBoolean()) {
+        found = true;
+        break;
+      }
+
+      curV = curV.add(Group.generator);
+      color++;
+      value += Math.floor(color / POKER_MAX_COLOR);
+      color = color % POKER_MAX_COLOR;
+    }
+
+    // if (!found) {
+    //     throw Error('Card cannot be decrypted');
+    // }
+
+    return new PokerCard({
+      value: UInt64.from(value),
+      color: UInt64.from(color),
+    });
+  }
+}
+
+/*
+// This is how it suppose to be done. But currently there is some porblems with types
 export class PokerEncryptedCard
   extends EncryptedCardBase
   implements IEncrypedCard<PokerCard>
@@ -75,7 +182,66 @@ export class PokerEncryptedCard
     });
   }
 }
+*/
 
+export class PokerEncryptedDeck extends Struct({
+  cards: Provable.Array(PokerEncryptedCard, POKER_DECK_SIZE),
+}) {
+  static fromJSONString(data: string): PokerEncryptedDeck {
+    let cards = [];
+    let cardsJSONs = JSON.parse(data);
+    for (let i = 0; i < POKER_DECK_SIZE; i++) {
+      cards.push(PokerEncryptedCard.fromJSONString(cardsJSONs[i]));
+    }
+
+    return new PokerEncryptedDeck({
+      cards,
+    });
+  }
+
+  equals(ed: PokerEncryptedDeck): Bool {
+    let res = new Bool(true);
+    for (let i = 0; i < this.cards.length; i++) {
+      res = res.and(this.cards[i].equals(ed.cards[i]));
+    }
+
+    return res;
+  }
+
+  toJSONString(): string {
+    let cardsJSONs = [];
+    for (let i = 0; i < this.cards.length; i++) {
+      cardsJSONs.push(this.cards[i].toJSONString());
+    }
+
+    return JSON.stringify(cardsJSONs);
+  }
+
+  applyPermutation(permutation: PokerPermutationMatrix): PokerEncryptedDeck {
+    if (POKER_DECK_SIZE != permutation.getSize()) {
+      throw Error(
+        `deckSize is not equal to permutation size ${POKER_DECK_SIZE} != ${permutation.getSize()}`,
+      );
+    }
+
+    let final = PokerEncryptedDeck.fromJSONString(this.toJSONString()); // Is it proper copy for proof?
+
+    for (let i = 0; i < permutation.getSize(); i++) {
+      let res = PokerEncryptedCard.zero();
+
+      for (let j = 0; j < permutation.getSize(); j++) {
+        res = res.add(this.cards[j].mul(permutation.getValue(i, j)));
+      }
+
+      final.cards[i] = res;
+    }
+
+    return final;
+  }
+}
+
+/*
+// This is how it should be implemented. But again some problems with types
 export class PokerEncryptedDeck extends EncryptedDeckBase(
   PokerEncryptedCard,
   {
@@ -83,6 +249,7 @@ export class PokerEncryptedDeck extends EncryptedDeckBase(
   },
   POKER_DECK_SIZE,
 ) {}
+*/
 
 export class PokerPermutationMatrix extends getPermutationMatrix(
   POKER_DECK_SIZE,
