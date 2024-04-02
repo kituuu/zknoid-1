@@ -43,11 +43,11 @@ export interface MatchQueueState {
   lastGameState: 'win' | 'lost' | undefined;
   getQueueLength: () => number;
   loadMatchQueue: (
-    client: ClientAppChain<typeof pokerConfig.runtimeModules>,
+    client: ClientAppChain<typeof pokerConfig.runtimeModules, any, any, any>,
     blockHeight: number
   ) => Promise<void>;
   loadActiveGame: (
-    client: ClientAppChain<typeof pokerConfig.runtimeModules>,
+    client: ClientAppChain<typeof pokerConfig.runtimeModules, any, any, any>,
     blockHeight: number,
     address: PublicKey,
     sessionPrivateKey: PrivateKey
@@ -105,7 +105,7 @@ export const usePokerMatchQueueStore = create<
       return this.queueLength;
     },
     async loadMatchQueue(
-      client: ClientAppChain<typeof pokerConfig.runtimeModules>,
+      client: ClientAppChain<typeof pokerConfig.runtimeModules, any, any, any>,
       blockHeight: number
     ) {
       set((state) => {
@@ -123,7 +123,7 @@ export const usePokerMatchQueueStore = create<
       });
     },
     async loadActiveGame(
-      client: ClientAppChain<typeof pokerConfig.runtimeModules>,
+      client: ClientAppChain<typeof pokerConfig.runtimeModules, any, any, any>,
       blockHeight: number,
       address: PublicKey,
       sessionPrivateKey: PrivateKey
@@ -183,7 +183,7 @@ export const usePokerMatchQueueStore = create<
           };
         });
 
-        let nextUserIndex = gameInfo.curPlayerIndex;
+        let nextUserIndex = gameInfo.round.curPlayerIndex;
         // @ts-ignore
         let userIndex = new GameIndex({
           gameId: activeGameId!,
@@ -194,9 +194,9 @@ export const usePokerMatchQueueStore = create<
 
         let status = +gameInfo.status.toString();
         let agrigatedPubKey = gameInfo.agrigatedPubKey;
-        let players = +gameInfo.maxPlayers.toString();
+        let players = +gameInfo.meta.maxPlayers.toString();
         let selfIndex = -1;
-        let round = +gameInfo.round.toString();
+        let round = +gameInfo.round.index.toString();
 
         for (let i = 0; i < players; i++) {
           // @ts-ignore
@@ -262,7 +262,7 @@ export const useObservePokerMatchQueue = () => {
   const network = useNetworkStore();
   const matchQueue = usePokerMatchQueueStore();
   const client = useContext<
-    ClientAppChain<typeof pokerConfig.runtimeModules> | undefined
+    ClientAppChain<typeof pokerConfig.runtimeModules, any, any, any> | undefined
   >(AppChainClientContext);
   const sessionPrivateKey = useStore(useSessionKeyStore, (state) =>
     state.getSessionKey()

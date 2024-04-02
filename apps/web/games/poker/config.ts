@@ -6,6 +6,7 @@ import { ZkNoidGameFeature, ZkNoidGameGenre } from '@/lib/platform/game_tags';
 export const pokerConfig = createZkNoidGameConfig({
   id: 'poker',
   name: 'Poker card game',
+  author: 'ZkNoid team',
   description:
     "Poker is comparing card game in which players wager over which hand is best according to that specific game's rules.",
   image: '/poker.webp',

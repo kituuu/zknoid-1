@@ -218,7 +218,11 @@ export default function PokerPage({
   };
 
   return (
-    <GamePage gameConfig={pokerConfig}>
+    <GamePage
+      gameConfig={pokerConfig}
+      image={'/image/game-page/arkanoid-title.svg'} // #TODO change to poker title image
+      defaultPage={'Game'}
+    >
       <main className="flex grow flex-col items-center gap-5 p-5">
         {networkStore.address ? (
           <div className="flex flex-col gap-5">
