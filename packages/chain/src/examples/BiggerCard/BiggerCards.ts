@@ -43,11 +43,6 @@ export class Game extends Struct({
   }
 }
 
-interface AConfig {}
-
-@runtimeModule()
-export class A extends RuntimeModule<AConfig> {}
-
 @runtimeModule()
 export class BiggerCard
   extends CardGameBase<PokerCard, PokerEncryptedCard, PokerEncryptedDeck, Game>
