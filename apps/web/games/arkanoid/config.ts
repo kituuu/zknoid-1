@@ -1,5 +1,5 @@
 import { createZkNoidGameConfig } from '@/lib/createConfig';
-import { ArkanoidGameHub, Balances } from 'zknoid-chain-dev';
+import { ArkanoidGameHub } from 'zknoid-chain-dev';
 import ArkanoidPage from './components/ArkanoidPage';
 import NewArkanoidCompetitionPage from './components/NewArkanoidCompetitionPage';
 import ArkanoidCompetitionsListPage from './components/ArkanoidCompetitionsListPage';
@@ -17,9 +17,9 @@ export const arkanoidConfig = createZkNoidGameConfig({
   isReleased: true,
   releaseDate: new Date(2023, 11, 1),
   popularity: 60,
+  author: 'ZkNoid Team',
   runtimeModules: {
     ArkanoidGameHub,
-    Balances,
   },
   page: ArkanoidPage,
   pageCompetitionsList: ArkanoidCompetitionsListPage,

@@ -1,6 +1,6 @@
 'use client';
 
-import "reflect-metadata";
+import 'reflect-metadata';
 
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
@@ -9,6 +9,7 @@ import DesktopNavbar from '@/components/ui/games-store/DesktopNavbar';
 import { Section1 } from '@/components/ui/games-store/Section1';
 import { Section2 } from '@/components/ui/games-store/Section2';
 import { IGame, announcedGames, defaultGames } from './constants/games';
+import { MobileNavbar } from '@/components/ui/games-store/MobileNavbar';
 
 const zkNoidConfig = import('@/games/config');
 
@@ -44,6 +45,7 @@ export default function Home() {
             isReleased: x.isReleased,
             releaseDate: x.releaseDate,
             popularity: x.popularity,
+            author: x.author,
           })) as IGame[]
         ).concat(announcedGames)
       );
@@ -54,6 +56,7 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <StoreProtokitUpdater />
       <DesktopNavbar autoconnect={true} />
+      <MobileNavbar />
 
       <main className="flex flex-col px-5">
         <Section1 />

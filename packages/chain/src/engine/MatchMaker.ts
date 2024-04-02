@@ -5,7 +5,7 @@ import {
   runtimeMethod,
 } from '@proto-kit/module';
 import type { Option } from '@proto-kit/protocol';
-import { UInt64 as ProtoUInt64 } from '@proto-kit/library';
+import { Balances, UInt64 as ProtoUInt64 } from '@proto-kit/library';
 import { State, StateMap, assert } from '@proto-kit/protocol';
 import {
   PublicKey,
@@ -19,7 +19,7 @@ import {
   Int64,
 } from 'o1js';
 import { inject } from 'tsyringe';
-import { Balances } from '../framework/balances';
+import { ZNAKE_TOKEN_ID } from '../constants';
 
 interface MatchMakerConfig {}
 
@@ -81,6 +81,11 @@ export class MatchMaker extends RuntimeModule<MatchMakerConfig> {
     UInt64,
   );
 
+  @state() public pendingBalances = StateMap.from<PublicKey, ProtoUInt64>(
+    PublicKey,
+    ProtoUInt64,
+  );
+
   // Game ids start from 1
   // abstract games: StateMap<UInt64, any>;
   @state() public games = StateMap.from<UInt64, any>(UInt64, UInt64);
@@ -107,8 +112,19 @@ export class MatchMaker extends RuntimeModule<MatchMakerConfig> {
    */
   public initGame(
     opponentReady: Bool,
+    player: PublicKey,
     opponent: Option<QueueListItem>,
   ): UInt64 {
+    this.pendingBalances.set(
+      Provable.if(opponentReady, player, PublicKey.empty()),
+      ProtoUInt64.from(0),
+    );
+
+    this.pendingBalances.set(
+      Provable.if(opponentReady, opponent.value.userAddress, PublicKey.empty()),
+      ProtoUInt64.from(0),
+    );
+
     return UInt64.from(0);
   }
 
@@ -159,7 +175,26 @@ export class MatchMaker extends RuntimeModule<MatchMakerConfig> {
       }),
     );
 
-    const gameId = this.initGame(opponentReady, opponent);
+    const pendingBalance = ProtoUInt64.from(
+      this.pendingBalances.get(this.transaction.sender.value).value,
+    );
+
+    const fee = this.getParticipationPrice();
+
+    const amountToTransfer = Provable.if<ProtoUInt64>(
+      pendingBalance.greaterThan(fee),
+      ProtoUInt64,
+      ProtoUInt64.from(0),
+      fee,
+    );
+
+    // Should be before initGame
+    this.pendingBalances.set(
+      this.transaction.sender.value,
+      pendingBalance.add(amountToTransfer),
+    );
+
+    const gameId = this.initGame(opponentReady, this.transaction.sender.value, opponent);
 
     // Assigning new game to player if opponent found
     this.activeGameId.set(
@@ -224,7 +259,30 @@ export class MatchMaker extends RuntimeModule<MatchMakerConfig> {
       ),
     );
 
-    this.balances.transferTo(PublicKey.empty(), this.getParticipationPrice());
+    this.balances.transfer(
+      ZNAKE_TOKEN_ID,
+      this.transaction.sender.value,
+      PublicKey.empty(),
+      amountToTransfer,
+    );
+  }
+
+  /**
+   * Registers user in session queue
+   *
+   * @param sessionKey - Key of user background session
+   * @param timestamp - Current user timestamp from front-end
+   */
+  @runtimeMethod()
+  public collectPendingBalance(): void {
+    const sender = this.sessions.get(this.transaction.sender.value).value;
+
+    const pendingBalance = ProtoUInt64.from(
+      this.pendingBalances.get(sender).value,
+    );
+
+    this.balances.mint(ZNAKE_TOKEN_ID, sender, pendingBalance);
+    this.pendingBalances.set(sender, ProtoUInt64.from(0));
   }
 
   @runtimeMethod()
@@ -242,7 +300,7 @@ export class MatchMaker extends RuntimeModule<MatchMakerConfig> {
       game.value.player1,
     );
     assert(game.isSome, 'Invalid game id');
-    assert(nextUser.equals(sender), `Not your move: ${sender.toBase58()}`);
+    assert(nextUser.equals(sender), `Not your move`);
     assert(game.value.winner.equals(PublicKey.empty()), `Game finished`);
 
     const isTimeout = this.network.block.height
@@ -264,12 +322,31 @@ export class MatchMaker extends RuntimeModule<MatchMakerConfig> {
     return DEFAULT_GAME_COST;
   }
 
-  protected getFunds(gameId: UInt64, winner: PublicKey) {
+  protected getFunds(
+    gameId: UInt64,
+    player1: PublicKey,
+    player2: PublicKey,
+    player1Share: ProtoUInt64,
+    player2Share: ProtoUInt64,
+  ) {
     assert(this.gameFinished.get(gameId).value.not());
 
     this.gameFinished.set(gameId, Bool(true));
 
-    this.balances.addBalance(winner, this.gameFund.get(gameId).value);
+    this.balances.mint(
+      ZNAKE_TOKEN_ID,
+      player1,
+      ProtoUInt64.from(this.gameFund.get(gameId).value)
+        .mul(player1Share)
+        .div(player1Share.add(player2Share)),
+    );
+    this.balances.mint(
+      ZNAKE_TOKEN_ID,
+      player2,
+      ProtoUInt64.from(this.gameFund.get(gameId).value)
+        .mul(player2Share)
+        .div(player1Share.add(player2Share)),
+    );
   }
 
   protected getSender(allowSession: Bool) {

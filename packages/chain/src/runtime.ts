@@ -1,24 +1,30 @@
+import { UInt64 } from '@proto-kit/library';
 import { ArkanoidGameHub } from './arkanoid/ArkanoidGameHub';
 import { Poker } from './poker/Poker';
-import { Balances } from './framework/balances';
 import { RandzuLogic } from './randzu/RandzuLogic';
 import { ThimblerigLogic } from './thimblerig/ThimblerigLogic';
+import { Balances } from './framework';
+import { ModulesConfig } from '@proto-kit/common';
+
+const modules = {
+  ArkanoidGameHub,
+  ThimblerigLogic,
+  Balances,
+  RandzuLogic,
+  Poker,
+};
+
+const config: ModulesConfig<typeof modules> = {
+  ArkanoidGameHub: {},
+  ThimblerigLogic: {},
+  Balances: {
+    totalSupply: UInt64.from(10000),
+  },
+  RandzuLogic: {},
+  Poker: {},
+};
 
 export default {
-  modules: {
-    ArkanoidGameHub,
-    Balances,
-    ThimblerigLogic,
-
-    RandzuLogic,
-    Poker,
-  },
-  config: {
-    ArkanoidGameHub: {},
-    Balances: {},
-    ThimblerigLogic: {},
-
-    RandzuLogic: {},
-    Poker: {},
-  },
+  modules,
+  config,
 };

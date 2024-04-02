@@ -10,7 +10,6 @@ import {
   createBricksBySeed,
 } from 'zknoid-chain-dev';
 import { Bool, Field, Int64, PublicKey, UInt64 } from 'o1js';
-import Link from 'next/link';
 import { useNetworkStore } from '@/lib/stores/network';
 import { useMinaBridge } from '@/lib/stores/protokitBalances';
 import {
@@ -24,7 +23,20 @@ import { useWorkerClientStore } from '@/lib/stores/workerClient';
 import AppChainClientContext from '@/lib/contexts/AppChainClientContext';
 import GamePage from '@/components/framework/GamePage';
 import { arkanoidConfig } from '../config';
-import { formatDecimals } from '@/lib/utils';
+import { GameWidget } from '@/components/framework/GameWidget/GameWidget';
+import { Leaderboard } from '@/components/framework/GameWidget/Leaderboard';
+import { Competition } from '@/components/framework/GameWidget/Competition';
+import { ConnectWallet } from '@/components/framework/GameWidget/ConnectWallet';
+import { RateGame } from '@/components/framework/GameWidget/RateGame';
+import { Lost } from '@/components/framework/GameWidget/Lost';
+import { Win } from '@/components/framework/GameWidget/Win';
+import { InstallWallet } from '@/components/framework/GameWidget/InstallWallet';
+import { DebugCheckbox } from '@/components/framework/GameWidget/DebugCheckbox';
+import { UnsetCompetitionPopup } from '@/components/framework/GameWidget/UnsetCompetitionPopup';
+import { useSwitchWidgetStorage } from '@/lib/stores/switchWidgetStorage';
+import { FullscreenButton } from '@/components/framework/GameWidget/FullscreenButton';
+import { AnimatePresence, motion } from 'framer-motion';
+import { LoadSpinner } from '@/components/ui/games-store/shared/LoadSpinner';
 
 enum GameState {
   NotStarted,
@@ -51,6 +63,11 @@ export default function ArkanoidPage({
   const [ticksAmount, setTicksAmount] = useState<number>(0);
   const [competition, setCompetition] = useState<ICompetition>();
 
+  const [isRateGame, setIsRateGame] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [isFullscreenLoading, setIsFullscreenLoading] =
+    useState<boolean>(false);
+
   const client = useContext(AppChainClientContext);
 
   if (!client) {
@@ -60,6 +77,7 @@ export default function ArkanoidPage({
   useObserveArkanoidLeaderboard(params.competitionId);
 
   const leaderboardStore = useArkanoidLeaderboardStore();
+  const switchStore = useSwitchWidgetStorage();
   const workerClientStore = useWorkerClientStore();
 
   let [gameId, setGameId] = useState(0);
@@ -73,7 +91,7 @@ export default function ArkanoidPage({
 
   const startGame = async () => {
     if (competition!.participationFee > 0) {
-      await bridge(competition!.participationFee);
+      if (await bridge(competition!.participationFee)) return;
     }
 
     setGameState(GameState.Active);
@@ -151,10 +169,7 @@ export default function ArkanoidPage({
       const tx = await client!.transaction(
         PublicKey.fromBase58(networkStore.address!),
         () => {
-          gameHub.addGameResult(
-            UInt64.from(competition!.competitionId),
-            proof!
-          );
+          gameHub.addGameResult(UInt64.from(competition!.id), proof!);
         }
       );
 
@@ -166,159 +181,134 @@ export default function ArkanoidPage({
     }
   };
 
-  return (
-    <GamePage gameConfig={arkanoidConfig}>
-      <main className="flex grow flex-col items-center gap-5 p-5">
-        {networkStore.address ? (
-          <div className="flex flex-col gap-5">
-            {gameState == GameState.Won && (
-              <div>
-                You won! Ticks verification:{' '}
-                <input
-                  className="border-2 border-left-accent bg-bg-dark text-white"
-                  type="text"
-                  value={JSON.stringify(lastTicks)}
-                  readOnly
-                ></input>
-              </div>
-            )}
-            {gameState == GameState.Lost && (
-              <div>You&apos;ve lost! Nothing to prove</div>
-            )}
+  useEffect(() => {
+    if (
+      competition &&
+      params.competitionId != switchStore.competitionId?.toString()
+    )
+      switchStore.setCompetitionId(competition.id);
+  }, [competition, params.competitionId, switchStore.competitionId]);
 
-            <div className="flex flex-row items-center justify-center gap-5">
-              {(gameState == GameState.Won || gameState == GameState.Lost) && (
-                <div
-                  className="rounded-xl border-2 border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark"
-                  onClick={() => startGame()}
-                >
-                  Restart
-                </div>
-              )}
-              {gameState == GameState.NotStarted && (
-                <div
-                  className="rounded-xl border-2 border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark"
-                  onClick={() => startGame()}
-                >
-                  Start for{' '}
-                  {competition && formatDecimals(competition.participationFee)}{' '}
-                  🪙
-                </div>
-              )}
-              {gameState == GameState.Won && (
-                <div
-                  className="rounded-xl border-2 border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark"
-                  onClick={() => proof()}
-                >
-                  Send proof
-                </div>
-              )}
-            </div>
-          </div>
-        ) : walletInstalled() ? (
-          <div
-            className="rounded-xl border-2 border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark"
-            onClick={async () => networkStore.connectWallet()}
-          >
-            Connect wallet
-          </div>
-        ) : (
-          <Link
-            href="https://www.aurowallet.com/"
-            className="rounded-xl border-2 border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Install wallet
-          </Link>
+  const isRestartButton =
+    gameState === GameState.Lost || gameState === GameState.Won;
+
+  return (
+    <GamePage
+      gameConfig={arkanoidConfig}
+      image={'/image/game-page/arkanoid-title.svg'}
+      defaultPage={'Game'}
+    >
+      <motion.div
+        animate={isFullscreen ? 'fullscreen' : 'windowed'}
+        initial={false}
+        variants={{
+          fullscreen: {
+            gridTemplateRows: 'repeat(2, minmax(0, 1fr))',
+            gap: '5rem',
+          },
+          windowed: {
+            gridTemplateRows: 'repeat(1, minmax(0, 1fr))',
+          },
+        }}
+        className={'grid grid-cols-4 gap-4'}
+        onAnimationStart={() => setIsFullscreenLoading(true)}
+        onAnimationComplete={() => setIsFullscreenLoading(false)}
+      >
+        {competition && (
+          <Leaderboard
+            leaderboard={leaderboardStore.getLeaderboard(params.competitionId)}
+          />
         )}
-        <div className="flex w-full">
-          <div className="w-1/3"></div>
-          <div className="flex w-1/3 items-center justify-center">
-            <GameView
-              onWin={(ticks) => {
-                console.log('Ticks', ticks);
-                setLastTicks(ticks);
-                setGameState(GameState.Won);
-              }}
-              onLost={(ticks) => {
-                setLastTicks(ticks);
-                setGameState(GameState.Lost);
-              }}
-              onRestart={(ticks) => {
-                setLastTicks(ticks);
-                startGame();
-              }}
-              level={level}
-              gameId={gameId}
-              debug={debug}
-              setScore={setScore}
-              setTicksAmount={setTicksAmount}
-            />
-          </div>
-          <div className="flex flex-col items-center">
-            <h1> Leaderboard </h1>
-            <table className="min-w-max text-left">
-              <thead className="font-semibold">
-                <tr>
-                  <th className="w-96 border-2 border-left-accent bg-bg-dark px-6 py-3">
-                    {' '}
-                    Address{' '}
-                  </th>
-                  <th className="w-20  border-2 border-left-accent bg-bg-dark px-6 py-3">
-                    {' '}
-                    Score{' '}
-                  </th>
-                  <th> </th>
-                </tr>
-              </thead>
-              <tbody>
-                {leaderboardStore
-                  .getLeaderboard(params.competitionId)
-                  .map((user, i) => (
-                    <tr className="border-b bg-white" key={i}>
-                      <td className="border-2 border-left-accent bg-bg-dark">
-                        {user.player.toBase58()}
-                      </td>
-                      <td className="border-2 border-left-accent bg-bg-dark">
-                        {user.score.toString()}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div>
-          Score: {score} Ticks: {ticksAmount}
-        </div>
-        <div className="grow"></div>
-        {/* <div className="flex flex-col gap-10">
-          <div>
-            Active competitions:
-            <div className="flex flex-col">
-              {arkanoidCompetitions.map((competition) => (
-                <Link
-                  href={`/games/arkanoid/${competition.id}`}
-                  key={competition.id}
-                >
-                  {competition.name} – {competition.prizeFund} 🪙
-                </Link>
-              ))}
+        <GameWidget
+          ticks={ticksAmount}
+          score={score}
+          gameRating={arkanoidConfig.rating}
+          author={arkanoidConfig.author}
+        >
+          {networkStore.address ? (
+            <>
+              {!competition ? (
+                <UnsetCompetitionPopup gameId={arkanoidConfig.id} />
+              ) : (
+                <>
+                  {gameState == GameState.Won && <Win sendProof={proof} />}
+                  {gameState == GameState.Lost && (
+                    <Lost startGame={startGame} />
+                  )}
+                  {gameState === GameState.NotStarted && (
+                    <div
+                      className={
+                        'flex h-full w-full items-center justify-center'
+                      }
+                    >
+                      <button
+                        className={
+                          'w-full max-w-[40%] rounded-[5px] border border-bg-dark bg-left-accent py-2 text-center text-[20px]/[20px] font-medium text-dark-buttons-text hover:border-left-accent hover:bg-bg-dark hover:text-left-accent'
+                        }
+                        onClick={startGame}
+                      >
+                        Start game
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          ) : walletInstalled() ? (
+            <ConnectWallet connectWallet={networkStore.connectWallet} />
+          ) : (
+            <InstallWallet />
+          )}
+          {gameState === GameState.Active && (
+            <div className={'flex h-full w-full items-center justify-center'}>
+              <GameView
+                onWin={(ticks) => {
+                  console.log('Ticks', ticks);
+                  setLastTicks(ticks);
+                  setGameState(GameState.Won);
+                }}
+                onLost={(ticks) => {
+                  setLastTicks(ticks);
+                  setGameState(GameState.Lost);
+                }}
+                onRestart={(ticks) => {
+                  setLastTicks(ticks);
+                  startGame();
+                }}
+                level={level}
+                gameId={gameId}
+                debug={debug}
+                setScore={setScore}
+                setTicksAmount={setTicksAmount}
+              />
             </div>
-          </div>
-        </div> */}
-        <div className="w-full text-end">
-          Debug:{' '}
-          <input
-            type="checkbox"
-            checked={debug}
-            onChange={(event) => {
-              setDebug(event.target.checked);
-            }}
-          ></input>
-        </div>
-      </main>
+          )}
+          <FullscreenButton
+            isFullscreen={isFullscreen}
+            setIsFullscreen={setIsFullscreen}
+          />
+        </GameWidget>
+        <Competition
+          startGame={startGame}
+          competition={competition}
+          isRestartBtn={isRestartButton}
+        />
+      </motion.div>
+      <DebugCheckbox debug={debug} setDebug={setDebug} />
+      <AnimatePresence initial={false}>
+        {isFullscreenLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={
+              'fixed left-0 top-0 z-50 flex h-full w-full flex-col items-center justify-center backdrop-blur-md'
+            }
+          >
+            <LoadSpinner width={50} height={50} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </GamePage>
   );
 }

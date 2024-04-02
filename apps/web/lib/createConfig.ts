@@ -17,6 +17,7 @@ export type ZkNoidGameConfig<
   isReleased: boolean;
   releaseDate: Date;
   popularity: number;
+  author: string;
   runtimeModules: RuntimeModules;
   page: ({ params }: { params: { competitionId: string } }) => React.ReactNode;
   pageCompetitionsList?: () => React.ReactNode;
@@ -36,6 +37,7 @@ export function createZkNoidGameConfig<
   isReleased: boolean;
   releaseDate: Date;
   popularity: number;
+  author: string;
   runtimeModules: RuntimeModules;
   page: ({ params }: { params: { competitionId: string } }) => React.ReactNode;
   pageCompetitionsList?: () => React.ReactNode;
@@ -53,7 +55,7 @@ export type ZkNoidConfig<
   ],
 > = {
   readonly games: games;
-  getClient(): ClientAppChain<games[number]['runtimeModules']>;
+  getClient(): ClientAppChain<games[number]['runtimeModules'], any, any, any>;
 };
 
 export type CreateConfigParameters<
@@ -79,7 +81,8 @@ export function createConfig<
 
       const client = buildClient(modules);
 
-      return client;
+      // @todo remove as any
+      return client as any as ClientAppChain<games[number]['runtimeModules'], any, any, any>;
     },
   };
 }

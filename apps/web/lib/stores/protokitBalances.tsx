@@ -16,6 +16,8 @@ import AppChainClientContext from '../contexts/AppChainClientContext';
 
 import { DefaultRuntimeModules } from '../runtimeModules';
 import { zkNoidConfig } from '@/games/config';
+import { Balances, ProtokitLibrary, ZNAKE_TOKEN_ID } from 'zknoid-chain-dev';
+import { BalancesKey } from '@proto-kit/library';
 
 export interface BalancesState {
   loading: boolean;
@@ -24,16 +26,9 @@ export interface BalancesState {
     [key: string]: bigint;
   };
   loadBalance: (
-    client: ClientAppChain<typeof DefaultRuntimeModules>,
+    client: ClientAppChain<typeof DefaultRuntimeModules, any, any, any>,
     address: string
   ) => Promise<void>;
-}
-
-function isPendingTransaction(
-  transaction: PendingTransaction | UnsignedTransaction | undefined
-): asserts transaction is PendingTransaction {
-  if (!(transaction instanceof PendingTransaction))
-    throw new Error('Transaction is not a PendingTransaction');
 }
 
 export const useProtokitBalancesStore = create<
@@ -44,7 +39,7 @@ export const useProtokitBalancesStore = create<
     loading: Boolean(false),
     balances: {},
     async loadBalance(
-      client: ClientAppChain<typeof DefaultRuntimeModules>,
+      client: ClientAppChain<typeof DefaultRuntimeModules, any, any, any>,
       address: string
     ) {
       set((state) => {
@@ -52,7 +47,11 @@ export const useProtokitBalancesStore = create<
       });
 
       const balance = await client.query.runtime.Balances.balances.get(
-        PublicKey.fromBase58(address)
+        // @ts-ignore
+        new BalancesKey({
+          tokenId: ZNAKE_TOKEN_ID,
+          address: PublicKey.fromBase58(address),
+        })
       );
 
       set((state) => {
@@ -66,7 +65,7 @@ export const useProtokitBalancesStore = create<
 export const useObserveProtokitBalance = ({
   client,
 }: {
-  client?: ClientAppChain<typeof DefaultRuntimeModules>;
+  client?: ClientAppChain<typeof DefaultRuntimeModules, any, any, any>;
 }) => {
   const chain = useProtokitChainStore();
   const network = useNetworkStore();
@@ -85,55 +84,47 @@ export const useObserveProtokitBalance = ({
   ]);
 };
 
+export interface BridgeStoreState {
+  open: boolean;
+  amount: bigint;
+  setOpen: (amount: bigint) => void;
+  close: () => void;
+}
+
+export const useBridgeStore = create<
+  BridgeStoreState,
+  [['zustand/immer', never]]
+>(
+  immer((set) => ({
+    open: false,
+    amount: 0n,
+    setOpen(amount) {
+      set({
+        open: true,
+        amount,
+      });
+    },
+    close() {
+      set({
+        open: false,
+      });
+    },
+  }))
+);
+
 export const useMinaBridge = () => {
   const balancesStore = useProtokitBalancesStore();
   const network = useNetworkStore();
-  const contextAppChainClient = useContext(
-    AppChainClientContext
-  ) as ClientAppChain<any> as ClientAppChain<typeof DefaultRuntimeModules>;
+  const bridgeStore = useBridgeStore();
 
   return useCallback(
-    async (amount: number) => {
-      if (!network.address) return;
-      if (balancesStore.balances[network.address]) return;
+    async (amount: bigint) => {
+      if (!network.address) return false;
+      if (balancesStore.balances[network.address] >= amount) return false;
 
-      const l1tx = await Mina.transaction(() => {
-        const senderUpdate = AccountUpdate.create(
-          PublicKey.fromBase58(network.address!)
-        );
-        senderUpdate.requireSignature();
-        console.log(BRIDGE_ADDR);
-        console.log(amount);
-        senderUpdate.send({ to: PublicKey.fromBase58(BRIDGE_ADDR), amount });
-      });
-
-      await l1tx.prove();
-
-      const transactionJSON = l1tx.toJSON();
-
-      const data = await (window as any).mina.sendPayment({
-        transaction: transactionJSON,
-        memo: `zknoid.io game bridging #${process.env.BRIDGE_ID ?? 100}`,
-        to: BRIDGE_ADDR,
-        amount: amount / 10 ** 9,
-      });
-
-      // const hash = (data as any).hash;
-      // console.log('Tx hash', hash);
-
-      // const balances = contextAppChainClient.runtime.resolve('Balances');
-      // const sender = PublicKey.fromBase58(network.address!);
-
-      // const l2tx = await contextAppChainClient.transaction(sender, () => {
-      //   balances.addBalance(sender, UInt64.from(amount));
-      // });
-
-      // await l2tx.sign();
-      // await l2tx.send();
-
-      // isPendingTransaction(l2tx.transaction);
-
-      // network.addPendingL2Transaction(l2tx!.transaction!);
+      bridgeStore.setOpen(amount);
+      console.log('Setting open', amount);
+      return true;
     },
     [network.walletConnected, balancesStore.balances]
   );
@@ -145,17 +136,25 @@ export const useTestBalanceGetter = () => {
   const network = useNetworkStore();
   const contextAppChainClient = useContext(
     AppChainClientContext
-  ) as ClientAppChain<any> as ClientAppChain<typeof DefaultRuntimeModules>;
+  ) as ClientAppChain<typeof DefaultRuntimeModules, any, any, any>;
 
   return useCallback(async () => {
     if (!network.address) return;
     if (balancesStore.balances[network.address]) return;
 
-    const balances = contextAppChainClient.runtime.resolve('Balances');
+    const balances = contextAppChainClient.runtime.resolve(
+      'Balances'
+    ) as Balances;
     const sender = PublicKey.fromBase58(network.address!);
 
+    console.log(balances);
+
     const l2tx = await contextAppChainClient.transaction(sender, () => {
-      balances.addBalance(sender, UInt64.from(defaultBalance));
+      balances.addBalance(
+        ZNAKE_TOKEN_ID,
+        sender,
+        ProtokitLibrary.UInt64.from(defaultBalance)
+      );
     });
 
     await l2tx.sign();

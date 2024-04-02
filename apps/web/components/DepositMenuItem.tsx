@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 
 import {
+  useBridgeStore,
   useMinaBridge,
   useProtokitBalancesStore,
   useTestBalanceGetter,
@@ -19,6 +20,22 @@ import {
 import { useNetworkStore } from '@/lib/stores/network';
 import { useMinaBalancesStore } from '@/lib/stores/minaBalances';
 import { AnimatePresence, motion } from 'framer-motion';
+import AppChainClientContext from '@/lib/contexts/AppChainClientContext';
+import 'reflect-metadata';
+
+import { ClientAppChain } from '@proto-kit/sdk';
+import { PendingTransaction, UnsignedTransaction } from '@proto-kit/sequencer';
+import { AccountUpdate, Mina, PublicKey, UInt64 } from 'o1js';
+import { useCallback, useEffect } from 'react';
+import { create } from 'zustand';
+
+import { immer } from 'zustand/middleware/immer';
+
+import { BRIDGE_ADDR } from '@/app/constants';
+
+import { zkNoidConfig } from '@/games/config';
+import { ProtokitLibrary, ZNAKE_TOKEN_ID } from 'zknoid-chain-dev';
+import { formatUnits } from '@/lib/unit';
 
 const BridgeInput = ({
   assets,
@@ -32,8 +49,8 @@ const BridgeInput = ({
   assets: ZkNoidAsset[];
   currentAsset: ZkNoidAsset;
   setCurrentAsset: (asset: ZkNoidAsset) => void;
-  amount: number;
-  setAmount?: (amount: number) => void;
+  amount: bigint;
+  setAmount?: (amount: bigint) => void;
   balance: bigint;
   isPay: boolean;
 }) => {
@@ -46,9 +63,13 @@ const BridgeInput = ({
             <input
               type="number"
               className="w-full min-w-0 appearance-none bg-bg-dark text-[24px] outline-none"
-              value={amount}
+              value={formatUnits(amount, currentAsset.decimals)}
               onChange={(value) => {
-                setAmount?.(parseFloat(value.target.value));
+                setAmount?.(
+                  BigInt(
+                    parseFloat(value.target.value) * 10 ** currentAsset.decimals
+                  )
+                );
               }}
               step="0.01"
               placeholder="0.00"
@@ -100,38 +121,98 @@ const BridgeInput = ({
   );
 };
 export const DepositMenuItem = () => {
-  const [expanded, setExpanded] = useState(false);
+  const bridgeStore = useBridgeStore();
+
   const [assetIn, setAssetIn] = useState(L1_ASSETS.Mina);
-  const [amountIn, setAmountIn] = useState(10);
+  const [amountIn, setAmountIn] = useState(
+    10n * 10n ** BigInt(L1_ASSETS.Mina.decimals)
+  );
   const [assetOut, setAssetOut] = useState(L2_ASSET);
-  const [amountOut, setAmountOut] = useState(10);
+  const [amountOut, setAmountOut] = useState(
+    10n * 10n ** BigInt(L2_ASSET.decimals)
+  );
 
   const minaBalancesStore = useMinaBalancesStore();
   const protokitBalancesStore = useProtokitBalancesStore();
 
   const networkStore = useNetworkStore();
+  const contextAppChainClient = useContext(AppChainClientContext);
 
-  const bridge = useMinaBridge();
+  useEffect(() => {
+    setAmountIn(bridgeStore.amount);
+    setAmountOut(bridgeStore.amount);
+  }, [bridgeStore.amount]);
+
+  useEffect(() => {
+    const newBalance = protokitBalancesStore.balances[networkStore.address!];
+    if (bridgeStore.amount > 0 && newBalance >= bridgeStore.amount) {
+      console.log('[Balance update finished!]');
+      bridgeStore.close();
+    }
+    console.log('Balance update');
+  }, [protokitBalancesStore.balances[networkStore.address!]]);
+
+  const bridge = async (amount: bigint) => {
+    console.log('Bridging', amount);
+    const l1tx = await Mina.transaction(() => {
+      const senderUpdate = AccountUpdate.create(
+        PublicKey.fromBase58(networkStore.address!)
+      );
+      senderUpdate.requireSignature();
+      console.log(BRIDGE_ADDR);
+      console.log(amountIn);
+      senderUpdate.send({
+        to: PublicKey.fromBase58(BRIDGE_ADDR),
+        amount: Number(amount / 10n ** 9n),
+      });
+    });
+
+    await l1tx.prove();
+
+    const transactionJSON = l1tx.toJSON();
+
+    const data = await (window as any).mina.sendPayment({
+      transaction: transactionJSON,
+      memo: `zknoid.io game bridging #${process.env.BRIDGE_ID ?? 100}`,
+      to: BRIDGE_ADDR,
+      amount: formatUnits(amountIn, assetIn.decimals),
+    });
+
+    const balances = contextAppChainClient!.runtime.resolve('Balances');
+    const sender = PublicKey.fromBase58(networkStore.address!);
+
+    const l2tx = await contextAppChainClient!.transaction(sender, () => {
+      balances.addBalance(
+        ZNAKE_TOKEN_ID,
+        sender,
+        ProtokitLibrary.UInt64.from(amountOut)
+      );
+    });
+
+    await l2tx.sign();
+    await l2tx.send();
+  };
   const testBalanceGetter = useTestBalanceGetter();
   const rate = 1;
-
   return (
     <>
       <HeaderCard
         svg={'top-up'}
         text="Top up"
-        onClick={() => setExpanded(true)}
+        onClick={() => bridgeStore.setOpen(100n)}
       />
-      <HeaderCard
-        svg={'top-up'}
-        text="Get test balance"
-        onClick={() => testBalanceGetter()}
-      />
+      {contextAppChainClient && (
+        <HeaderCard
+          svg={'top-up'}
+          text="Get test balance"
+          onClick={() => testBalanceGetter()}
+        />
+      )}
       <AnimatePresence>
-        {expanded && (
+        {bridgeStore.open && (
           <motion.div
             className="fixed left-0 top-0 z-10 flex h-full w-full items-center justify-center backdrop-blur-sm"
-            onClick={() => setExpanded(false)}
+            onClick={() => bridgeStore.close()}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -148,8 +229,8 @@ export const DepositMenuItem = () => {
                   setCurrentAsset={setAssetIn}
                   amount={amountIn}
                   setAmount={(amount) => {
-                    setAmountIn(amount);
-                    setAmountOut(amount * rate);
+                    setAmountIn(amount || 0n);
+                    setAmountOut(amount * BigInt(rate) || 0n);
                   }}
                   balance={
                     minaBalancesStore.balances[networkStore.address!] ?? 0n
@@ -167,8 +248,8 @@ export const DepositMenuItem = () => {
                   setCurrentAsset={setAssetOut}
                   amount={amountOut}
                   setAmount={(amount) => {
-                    setAmountIn(amount / rate);
-                    setAmountOut(amount);
+                    setAmountIn(amount / BigInt(rate) || 0n);
+                    setAmountOut(amount || 0n);
                   }}
                   balance={
                     protokitBalancesStore.balances[networkStore.address!] ?? 0n
@@ -178,7 +259,7 @@ export const DepositMenuItem = () => {
               </div>
               <div
                 className="cursor-pointer rounded-xl bg-left-accent px-7 py-3 text-[24px] text-black"
-                onClick={() => bridge(amountIn * 10 ** 9)}
+                onClick={() => bridge(amountIn * 10n ** 9n)}
               >
                 Bridge
               </div>

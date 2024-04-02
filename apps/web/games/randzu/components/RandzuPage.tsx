@@ -24,7 +24,7 @@ import { getRandomEmoji } from '../utils';
 import { useMatchQueueStore } from '@/lib/stores/matchQueue';
 import { useProtokitChainStore } from '@/lib/stores/protokitChain';
 import { MOVE_TIMEOUT_IN_BLOCKS } from 'zknoid-chain-dev/dist/src/engine/MatchMaker';
-import { formatDecimals } from '@/lib/utils';
+import { formatUnits } from '@/lib/unit';
 
 enum GameState {
   NotStarted,
@@ -46,7 +46,10 @@ export default function RandzuPage({
   );
 
   const client = useContext(AppChainClientContext) as ClientAppChain<
-    typeof randzuConfig.runtimeModules
+    typeof randzuConfig.runtimeModules,
+    any,
+    any,
+    any
   >;
 
   if (!client) {
@@ -79,7 +82,7 @@ export default function RandzuPage({
 
   const startGame = async () => {
     if (competition!.enteringPrice > 0) {
-      console.log(await bridge(competition?.enteringPrice! * 10 ** 9));
+      if (await bridge(competition?.enteringPrice!)) return;
     }
 
     const randzuLogic = client.runtime.resolve('RandzuLogic');
@@ -98,6 +101,24 @@ export default function RandzuPage({
     await tx.send();
 
     setGameState(GameState.MatchRegistration);
+  };
+
+  const collectPending = async () => {
+    const randzuLogic = client.runtime.resolve('RandzuLogic');
+
+    const tx = await client.transaction(sessionPrivateKey.toPublicKey(), () => {
+      randzuLogic.collectPendingBalance();
+    });
+
+    console.log('Collect tx', tx);
+
+    tx.transaction = tx.transaction?.sign(sessionPrivateKey);
+
+    console.log('Sending tx', tx);
+
+    await tx.send();
+
+    console.log('Tx sent', tx);
   };
 
   const proveOpponentTimeout = async () => {
@@ -180,6 +201,10 @@ export default function RandzuPage({
   }, [matchQueue.gameInfo?.isCurrentUserMove]);
 
   useEffect(() => {
+    if (matchQueue.pendingBalance && !matchQueue.inQueue) {
+      console.log('Collecting pending balance', matchQueue.pendingBalance);
+      collectPending();
+    }
     if (matchQueue.inQueue && !matchQueue.activeGameId) {
       setGameState(GameState.Matchmaking);
     } else if (matchQueue.activeGameId) {
@@ -192,7 +217,11 @@ export default function RandzuPage({
   }, [matchQueue.activeGameId, matchQueue.inQueue, matchQueue.lastGameState]);
 
   return (
-    <GamePage gameConfig={randzuConfig}>
+    <GamePage
+      gameConfig={randzuConfig}
+      image={'/image/game-page/game-title-template.svg'}
+      defaultPage={'Game'}
+    >
       <main className="flex grow flex-col items-center gap-5 p-5">
         {networkStore.address ? (
           <div className="flex flex-col gap-5">
@@ -206,12 +235,14 @@ export default function RandzuPage({
             <div className="flex flex-row items-center justify-center gap-5">
               {(gameState == GameState.Won || gameState == GameState.Lost) && (
                 <div>
-                  <div
-                    className="rounded-xl border-2 border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark"
-                    onClick={() => getWinnings()}
-                  >
-                    Get winnings
-                  </div>
+                  {gameState == GameState.Won && (
+                    <div
+                      className="rounded-xl border-2 border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark"
+                      onClick={() => getWinnings()}
+                    >
+                      Get winnings
+                    </div>
+                  )}
                   <div
                     className="rounded-xl border-2 border-left-accent bg-bg-dark p-5 hover:bg-left-accent hover:text-bg-dark"
                     onClick={() => restart()}
@@ -226,7 +257,7 @@ export default function RandzuPage({
                   onClick={() => startGame()}
                 >
                   Start for{' '}
-                  {competition && formatDecimals(competition.enteringPrice)} 🪙
+                  {competition && formatUnits(competition.enteringPrice)} 🪙
                 </div>
               )}
             </div>
@@ -302,22 +333,6 @@ export default function RandzuPage({
           loading={loading}
         />
         <div>Players in queue: {matchQueue.getQueueLength()}</div>
-        <div className="grow"></div>
-        <div className="flex flex-col gap-10">
-          <div>
-            Active competitions:
-            <div className="flex flex-col">
-              {randzuCompetitions.map((competition) => (
-                <Link
-                  href={`/games/randzu/${competition.id}`}
-                  key={competition.id}
-                >
-                  {competition.name} – {competition.prizeFund} 🪙
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
       </main>
     </GamePage>
   );
