@@ -103,6 +103,7 @@ export class Poker extends MatchMaker {
 
   public override initGame(
     opponentReady: Bool,
+    player: PublicKey,
     opponent: Option<QueueListItem>,
   ): UInt64 {
     let newId = this.lastGameId.get().orElse(UInt64.from(0));
@@ -110,25 +111,15 @@ export class Poker extends MatchMaker {
 
     let opp = Provable.if(
       opponent.isSome,
-      this.userToSession
-        .get(opponent.value.userAddress)
-        .orElse(this.transaction.sender.value),
-      this.transaction.sender.value, // Workaround. PublicKey.zero cannot be transformed to Group elem
+      this.userToSession.get(opponent.value.userAddress).orElse(player),
+      player, // Workaround. PublicKey.zero cannot be transformed to Group elem
     );
 
     assert(
-      this.userToSession
-        .get(this.transaction.sender.value)
-        .value.equals(PublicKey.empty())
-        .not(),
+      this.userToSession.get(player).value.equals(PublicKey.empty()).not(),
     );
 
-    let pubKeyList = [
-      this.userToSession
-        .get(this.transaction.sender.value)
-        .orElse(this.transaction.sender.value),
-      opp,
-    ];
+    let pubKeyList = [this.userToSession.get(player).orElse(player), opp];
 
     let agrigatedPubKey = this.getAgrigatedPubKey(pubKeyList);
     let maxPlayers = UInt64.from(2);
@@ -149,7 +140,7 @@ export class Poker extends MatchMaker {
     );
 
     /// #TODO Transform to provable
-    let players = [opponent.value.userAddress, this.transaction.sender.value];
+    let players = [opponent.value.userAddress, player];
 
     for (let i = 0; i < players.length; i++) {
       this.players.set(
@@ -446,6 +437,8 @@ export class Poker extends MatchMaker {
   public claimWin(gameId: UInt64) {
     // In case others folded
   }
+
+  public proveOpponentTimeout(gameId: UInt64): void {}
 
   private getUserByIndex(gameId: UInt64, index: UInt64): PublicKey {
     return forceOptionValue(

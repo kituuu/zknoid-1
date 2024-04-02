@@ -194,7 +194,11 @@ export class MatchMaker extends RuntimeModule<MatchMakerConfig> {
       pendingBalance.add(amountToTransfer),
     );
 
-    const gameId = this.initGame(opponentReady, this.transaction.sender.value, opponent);
+    const gameId = this.initGame(
+      opponentReady,
+      this.transaction.sender.value,
+      opponent,
+    );
 
     // Assigning new game to player if opponent found
     this.activeGameId.set(

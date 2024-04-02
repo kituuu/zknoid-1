@@ -92,7 +92,7 @@ class PokerHelper {
 // const getGame = async (appChain: AppChain, gameId: UInt64)
 
 const sendShuffle = async (
-  appChain: TestingAppChain<any, any>,
+  appChain: TestingAppChain<any, any, any, any>,
   poker: Poker,
   game: GameInfo,
   permutation: PermutationMatrix,
@@ -122,7 +122,7 @@ const sendShuffle = async (
 };
 
 const sendBid = async (
-  appChain: TestingAppChain<any, any>,
+  appChain: TestingAppChain<any, any, any, any>,
   poker: Poker,
   game: GameInfo,
   senderPrivateKey: PrivateKey,
@@ -140,7 +140,7 @@ const sendBid = async (
 };
 
 const sendInitialOpen = async (
-  appChain: TestingAppChain<any, any>,
+  appChain: TestingAppChain<any, any, any, any>,
   poker: Poker,
   game: GameInfo,
   senderPrivateKey: PrivateKey,
@@ -167,7 +167,7 @@ const sendInitialOpen = async (
 };
 
 const sendNextOpen = async (
-  appChain: TestingAppChain<any, any>,
+  appChain: TestingAppChain<any, any, any, any>,
   poker: Poker,
   game: GameInfo,
   senderPrivateKey: PrivateKey,
@@ -199,7 +199,7 @@ interface ICombination {
 }
 
 const sendCombinations = async (
-  appChain: TestingAppChain<any, any>,
+  appChain: TestingAppChain<any, any, any, any>,
   poker: Poker,
   game: GameInfo,
   senderPrivateKey: PrivateKey,
@@ -274,16 +274,16 @@ describe('game hub', () => {
   });
   it('Two players basic case', async () => {
     const appChain = TestingAppChain.fromRuntime({
-      modules: {
-        Poker,
-        Balances,
-      },
+      Poker,
+      Balances,
     });
 
     appChain.configurePartial({
       Runtime: {
         Poker: {},
-        Balances: {},
+        Balances: {
+          totalSupply: UInt64.from(10000),
+        },
       },
     });
 
