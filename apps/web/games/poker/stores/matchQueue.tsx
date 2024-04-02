@@ -21,8 +21,10 @@ export interface ICard {
   numOfEncryptions: number;
 }
 
+// #TODO refactor. Reduce to simpler components
 export interface IGameInfo {
   status: number;
+  substatus: number;
   gameId: bigint;
   contractDeck: EncryptedDeck;
   contractDeckDecrypted: EncryptedDeck;
@@ -32,6 +34,8 @@ export interface IGameInfo {
   players: number;
   selfIndex: number;
   round: number;
+  bid: number;
+  bank: number;
 }
 
 export interface MatchQueueState {
@@ -193,10 +197,13 @@ export const usePokerMatchQueueStore = create<
           (await client.query.runtime.Poker.players.get(userIndex))!;
 
         let status = +gameInfo.status.toString();
+        let substatus = +gameInfo.round.subStatus.toString();
         let agrigatedPubKey = gameInfo.agrigatedPubKey;
         let players = +gameInfo.meta.maxPlayers.toString();
         let selfIndex = -1;
         let round = +gameInfo.round.index.toString();
+        let bid = +gameInfo.round.curBid.toString();
+        let bank = +gameInfo.round.bank.toString();
 
         for (let i = 0; i < players; i++) {
           // @ts-ignore
@@ -233,6 +240,7 @@ export const usePokerMatchQueueStore = create<
           // @ts-ignore
           state.gameInfo = {
             status,
+            substatus,
             gameId: activeGameId.toBigInt(),
             contractDeck,
             contractDeckDecrypted,
@@ -242,6 +250,8 @@ export const usePokerMatchQueueStore = create<
             players,
             selfIndex,
             round,
+            bid,
+            bank,
           };
           console.log('Parsed game info', state.gameInfo);
         });

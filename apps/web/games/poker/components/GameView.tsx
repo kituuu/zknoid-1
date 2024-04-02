@@ -20,6 +20,37 @@ interface IGameViewProps {
   nextTurn: () => Promise<any>;
 }
 
+const substatusToString = (n: number): string => {
+  console.log(n);
+  switch (n) {
+    case 1:
+      return 'Bid phase';
+    case 2:
+      return 'Reveal phase';
+  }
+
+  return 'Unknown phase';
+};
+
+const statusToString = (n: number): string => {
+  switch (n) {
+    case 0:
+      return 'Setup';
+    case 1:
+      return 'Blind';
+    case 2:
+      return 'Pre-flop';
+    case 3:
+      return 'Flop';
+    case 4:
+      return 'Turn';
+    case 5:
+      return 'River';
+  }
+
+  return 'Unknown status';
+};
+
 const getPlayerCardsDiv = (ed: EncryptedDeck, i: number): ReactElement => {
   const playerCards = ed.cards.slice(5 + 2 * i, 5 + 2 * i + 2);
 
@@ -123,7 +154,18 @@ export const GameView = (props: IGameViewProps) => {
       <div onClick={props.encryptAll}> Encrypt all </div>
       <div onClick={props.nextTurn}> Next turn </div>
       <div> Round: ${props.gameInfo?.round} </div>
-      <div> Status: ${props.gameInfo?.status} </div>
+      <div>
+        {' '}
+        Status: {props.gameInfo && statusToString(props.gameInfo?.status)}{' '}
+      </div>
+
+      <div>
+        {' '}
+        Substatus:{' '}
+        {props.gameInfo && substatusToString(props.gameInfo?.substatus)}{' '}
+      </div>
+      <div> Bid: ${props.gameInfo?.bid} </div>
+      <div> Bank: ${props.gameInfo?.bank} </div>
 
       <div className="flex flex-grow flex-col">
         <div className="width h-40 w-full flex-none">
