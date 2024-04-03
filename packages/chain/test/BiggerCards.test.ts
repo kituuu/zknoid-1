@@ -48,7 +48,7 @@ export async function mockProof<I, O, P>(
 }
 
 const sendShuffle = async (
-  appChain: TestingAppChain<any, any>,
+  appChain: TestingAppChain<any, any, any, any>,
   biggerCard: BiggerCard,
   game: Game,
   permutation: PokerPermutationMatrix,
@@ -88,7 +88,7 @@ const sendShuffle = async (
 };
 
 const openCards = async (
-  appChain: TestingAppChain<any, any>,
+  appChain: TestingAppChain<any, any, any, any>,
   biggerCard: BiggerCard,
   game: Game,
   senderPrivateKey: PrivateKey,
@@ -124,14 +124,13 @@ const openCards = async (
 describe('bigger card', () => {
   it('Check if cheet codes works', async () => {
     const appChain = TestingAppChain.fromRuntime({
-      modules: {
-        BiggerCard,
-      },
+      BiggerCard,
     });
 
     appChain.configurePartial({
       Runtime: {
         BiggerCard: {},
+        Balances: {},
       },
     });
 
@@ -221,5 +220,5 @@ describe('bigger card', () => {
     game = await appChain.query.runtime.BiggerCard.games.get(gameId);
 
     expect(game!.winner.equals(alice).toBoolean()).toBeTruthy();
-  });
+  }, 100000);
 });

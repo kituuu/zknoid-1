@@ -157,29 +157,35 @@ export class PokerEncryptedCard
 
     let groupVal = this.value[1].sub(this.value[2]);
     let curV = Group.generator;
-    let value = 0;
-    let color = 0;
+    let value = UInt64.zero;
+    let color = UInt64.zero;
+    let result = new PokerCard({
+      value: UInt64.zero,
+      color: UInt64.zero,
+    });
     let found = false;
     for (let i = 0; i < POKER_MAX_VALUE * POKER_MAX_COLOR; i++) {
-      if (curV.equals(groupVal).toBoolean()) {
-        found = true;
-        break;
-      }
+      result = Provable.if<PokerCard>(
+        curV.equals(groupVal),
+        PokerCard,
+        new PokerCard({
+          value,
+          color,
+        }),
+        result,
+      );
 
       curV = curV.add(Group.generator);
-      color++;
-      value += Math.floor(color / POKER_MAX_COLOR);
-      color = color % POKER_MAX_COLOR;
+      color = color.add(1);
+      value = value.add(color.divMod(POKER_MAX_COLOR).quotient);
+      color = color.divMod(POKER_MAX_COLOR).rest;
     }
 
     // if (!found) {
     //   throw Error('Card cannot be decrypted');
     // }
 
-    return new PokerCard({
-      value: UInt64.from(value),
-      color: UInt64.from(color),
-    });
+    return result;
   }
 }
 
