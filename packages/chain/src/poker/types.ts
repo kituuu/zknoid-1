@@ -24,6 +24,8 @@ export const INITAL_BALANCE = 100;
 
 export const WIN_CLAIM_TIMEOUT_IN_BLOCKS = 10;
 
+export const NO_WINNER_INDEX = Number.MAX_SAFE_INTEGER;
+
 const boolToInt = (b: Bool): Int64 => {
   return Provable.if(b, Int64.from(1), Int64.from(-1));
 };
@@ -328,7 +330,7 @@ export class WinnerInfo extends Struct({
   static initial(): WinnerInfo {
     return new WinnerInfo({
       highestCombinations: [...Array(6)].map(Combination.zero),
-      currentWinner: UInt64.from(0), // No player should have 0 index. Probably can use it as bank, but it can cause misunerstanding
+      currentWinner: UInt64.from(NO_WINNER_INDEX),
       timeOutStated: Bool(false),
       timeOutStartBlock: UInt64.from(0),
     });

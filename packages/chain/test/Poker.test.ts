@@ -6,6 +6,7 @@ import { dummyBase64Proof } from 'o1js/dist/node/lib/proof_system';
 import {
   Balances,
   Combination,
+  GameIndex,
   GameInfo,
   GameStatus,
   POKER_DECK_SIZE,
@@ -37,10 +38,14 @@ import { error } from 'console';
 
 log.setLevel('ERROR');
 
-const chunkenize = (arr: any[], size: number) =>
-  Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
-    arr.slice(i * size, i * size + size),
-  );
+const skipBlocks = async (
+  amount: number,
+  appChain: TestingAppChain<any, any, any, any>,
+) => {
+  for (let i = 0; i < amount; i++) {
+    await appChain.produceBlock();
+  }
+};
 
 export async function mockProof<I, O, P>(
   publicOutput: O,
@@ -118,7 +123,8 @@ const sendShuffle = async (
     await tx.send();
   }
 
-  await appChain.produceBlock();
+  let block = await appChain.produceBlock();
+  expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
 };
 
 const sendBid = async (
@@ -136,7 +142,8 @@ const sendBid = async (
   await tx.sign();
   await tx.send();
 
-  await appChain.produceBlock();
+  let block = await appChain.produceBlock();
+  expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
 };
 
 const sendInitialOpen = async (
@@ -148,6 +155,7 @@ const sendInitialOpen = async (
 ) => {
   appChain.setSigner(senderPrivateKey);
   let sender = senderPrivateKey.toPublicKey();
+
   let publicInput = new InitialOpenPublicInput({
     deck: game.deck,
     playerIndex,
@@ -163,7 +171,8 @@ const sendInitialOpen = async (
     await tx.send();
   }
 
-  await appChain.produceBlock();
+  let block = await appChain.produceBlock();
+  expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
 };
 
 const sendNextOpen = async (
@@ -190,7 +199,8 @@ const sendNextOpen = async (
     await tx.send();
   }
 
-  await appChain.produceBlock();
+  let block = await appChain.produceBlock();
+  expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
 };
 
 interface ICombination {
@@ -259,13 +269,14 @@ const sendCombinations = async (
 
   {
     const tx = await appChain.transaction(sender, () => {
-      poker.sendResult(game.meta.id, proof);
+      poker.sendResult(game.meta.id, UInt64.from(playerIndex), proof);
     });
     await tx.sign();
     await tx.send();
   }
 
-  await appChain.produceBlock();
+  let block = await appChain.produceBlock();
+  expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
 };
 
 describe('game hub', () => {
@@ -307,12 +318,18 @@ describe('game hub', () => {
       await tx1.sign();
       await tx1.send();
 
+      let block = await appChain.produceBlock();
+      expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
+
       appChain.setSigner(bobPrivateKey);
       const tx2 = await appChain.transaction(bob, () => {
         poker.register(bob, UInt64.zero);
       });
       await tx2.sign();
       await tx2.send();
+
+      block = await appChain.produceBlock();
+      expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
     }
 
     await appChain.produceBlock();
@@ -324,6 +341,16 @@ describe('game hub', () => {
 
     expect(aliceGameId!.equals(bobGameId!).toBoolean()).toBeTruthy();
     expect(aliceGameId!.equals(gameId).toBoolean()).toBeTruthy();
+
+    const aliceKey = new GameIndex({
+      gameId,
+      index: UInt64.from(0),
+    });
+
+    const bobKey = new GameIndex({
+      gameId,
+      index: UInt64.from(1),
+    });
 
     const getGame = async (): Promise<GameInfo> => {
       return (await appChain.query.runtime.Poker.games.get(gameId))!;
@@ -346,7 +373,13 @@ describe('game hub', () => {
 
     // First turn open
     game = await getGame();
-    await sendInitialOpen(appChain, poker, game, alicePrivateKey, UInt64.zero);
+    await sendInitialOpen(
+      appChain,
+      poker,
+      game,
+      alicePrivateKey,
+      UInt64.from(0),
+    );
     game = await getGame();
     await sendInitialOpen(appChain, poker, game, bobPrivateKey, UInt64.from(1));
     game = await getGame();
@@ -421,7 +454,7 @@ describe('game hub', () => {
 
     game = await getGame();
     expect(
-      game.winnerInfo.currentWinner.equals(alice).toBoolean(),
+      game.winnerInfo.currentWinner.equals(UInt64.from(0)).toBoolean(),
     ).toBeTruthy();
 
     await sendCombinations(
@@ -434,9 +467,41 @@ describe('game hub', () => {
     );
 
     game = await getGame();
-    expect(game.winnerInfo.currentWinner.equals(bob).toBoolean()).toBeTruthy();
+    expect(
+      game.winnerInfo.currentWinner.equals(UInt64.from(1)).toBoolean(),
+    ).toBeTruthy();
 
-    expect(+game.status.toString()).toBe(GameStatus.ENDING);
+    expect(+game.round.status.toString()).toBe(GameStatus.ENDING);
+
+    await skipBlocks(10, appChain);
+
+    {
+      console.log('End round');
+      appChain.setSigner(alicePrivateKey);
+      let tx = await appChain.transaction(alice, () => {
+        poker.endRound(gameId);
+      });
+
+      await tx.sign();
+      await tx.send();
+
+      let block = await appChain.produceBlock();
+      expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
+    }
+
+    game = await getGame();
+
+    expect(game.round.status.equals(UInt64.zero)).toBeTruthy();
+    expect(game.round.bank.equals(UInt64.zero)).toBeTruthy();
+
+    let aliceBalance =
+      await appChain.query.runtime.Poker.userBalance.get(aliceKey);
+
+    let bobBalance =
+      await appChain.query.runtime.Poker.userBalance.get(aliceKey);
+
+    expect(aliceBalance!.sub(bobBalance!).equals(UInt64.from(2)));
+
     // Wining
   }, 100000);
 });

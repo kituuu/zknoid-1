@@ -35,6 +35,7 @@ import {
   MAX_COLOR,
   MAX_VALUE,
   MIN_VALUE,
+  NO_WINNER_INDEX,
   POKER_DECK_SIZE,
   RoundInfo,
   UserActionIndex,
@@ -146,7 +147,7 @@ export class Poker extends MatchMaker {
       this.players.set(
         new GameIndex({
           gameId: newId,
-          index: UInt64.from(i + 1), // 0 index should be empty
+          index: UInt64.from(i),
         }),
         players[i],
       );
@@ -156,7 +157,7 @@ export class Poker extends MatchMaker {
       this.userBalance.set(
         new GameIndex({
           gameId: newId,
-          index: UInt64.from(i + 1), // 0 index should be empty
+          index: UInt64.from(i),
         }),
         UInt64.from(INITAL_BALANCE),
       );
@@ -186,7 +187,10 @@ export class Poker extends MatchMaker {
 
     let game = forceOptionValue(this.games.get(gameId));
     // Check that game in setup status
-    assert(game.round.status.equals(UInt64.from(GameStatus.SETUP)));
+    assert(
+      game.round.status.equals(UInt64.from(GameStatus.SETUP)),
+      'Wrong status',
+    );
 
     let currentPlayer = this.getUserByIndex(gameId, game.round.curPlayerIndex);
 
@@ -483,14 +487,14 @@ export class Poker extends MatchMaker {
     this.startNewRound(game, winner);
 
     // Update bank, if it was not distributed
-    const zeroKey = new GameIndex({
+    const noWinnerKey = new GameIndex({
       gameId,
-      index: UInt64.zero,
+      index: UInt64.from(NO_WINNER_INDEX),
     });
 
-    const zeroBalance = this.userBalance.get(zeroKey).value;
-    game.round.bank = zeroBalance;
-    this.userBalance.set(zeroKey, UInt64.zero);
+    const noWinnerBalance = this.userBalance.get(noWinnerKey).value;
+    game.round.bank = noWinnerBalance;
+    this.userBalance.set(noWinnerKey, UInt64.zero);
     this.games.set(gameId, game);
   }
 
