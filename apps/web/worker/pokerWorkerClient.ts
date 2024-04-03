@@ -99,6 +99,18 @@ export default class PokerWorkerClient {
     return restoredProof;
   }
 
+  async proveFold(deck: EncryptedDeck, pk: PrivateKey, round: UInt64) {
+    const result = await this._call('proveFold', {
+      deckJSON: deck.toJSONString(),
+      pkBase58: pk.toBase58(),
+      round: round.toJSON(),
+    });
+    console.log('Restoring', result);
+    const restoredProof = PublicOpenProof.fromJSON(result);
+
+    return restoredProof;
+  }
+
   worker: Worker;
 
   promises: {

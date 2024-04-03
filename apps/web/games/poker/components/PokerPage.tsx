@@ -217,6 +217,42 @@ export default function PokerPage({
     await tx.send();
   };
 
+  const bid = async (amount: number) => {
+    console.log('bid');
+    const poker = client.runtime.resolve('Poker');
+
+    const tx = await client.transaction(sessionPublicKey, () => {
+      poker.bid(UInt64.from(matchQueue.activeGameId), UInt64.from(amount));
+    });
+
+    tx.transaction = tx.transaction?.sign(sessionPrivateKey);
+    await tx.send();
+  };
+
+  const fold = async () => {
+    console.log('fold');
+    let pokerWorkerClient = await workerClientStore.start();
+
+    const foldProof = await pokerWorkerClient.proveFold(
+      matchQueue.gameInfo!.contractDeck,
+      sessionPrivateKey,
+      UInt64.from(matchQueue.gameInfo!.round)
+    );
+
+    console.log('prove ready');
+
+    const poker = client.runtime.resolve('Poker');
+
+    const tx = await client.transaction(sessionPublicKey, () => {
+      poker.fold(UInt64.from(matchQueue.activeGameId), foldProof);
+    });
+
+    setLoading(true);
+
+    tx.transaction = tx.transaction?.sign(sessionPrivateKey);
+    await tx.send();
+  };
+
   return (
     <GamePage
       gameConfig={pokerConfig}
@@ -286,6 +322,8 @@ export default function PokerPage({
           encryptAll={encryptAll}
           decryptSingle={decryptSingle}
           nextTurn={nextTurn}
+          bid={bid}
+          fold={fold}
         />
         <div>Players in queue: {matchQueue.getQueueLength()}</div>
         {/* <div className="flex flex-col gap-10">

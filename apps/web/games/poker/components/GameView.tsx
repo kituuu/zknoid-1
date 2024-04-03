@@ -18,6 +18,8 @@ interface IGameViewProps {
   encryptAll: () => Promise<any>;
   decryptSingle: (i: number) => Promise<any>;
   nextTurn: () => Promise<any>;
+  bid: (n: number) => Promise<any>;
+  fold: () => Promise<any>;
 }
 
 const substatusToString = (n: number): string => {
@@ -55,7 +57,10 @@ const getSelfCardsDiv = (
   ed: EncryptedDeck,
   selfIndex: number,
   curPlayer: number,
-  phase: number
+  curBid: number,
+  phase: number,
+  bid: (n: number) => Promise<any>,
+  fold: () => Promise<any>
 ): ReactElement => {
   const enabled = phase == 2 && selfIndex == curPlayer; // Bid phase and our next move
   const buttonEnabledProps = enabled
@@ -67,9 +72,18 @@ const getSelfCardsDiv = (
     <div className="flex h-full justify-center">
       {getPlayerCardsDiv(ed, selfIndex)}
       <div className="flex flex-col justify-between">
-        <div className={buttonClass}> Call </div>
-        <div className={buttonClass}> Rise </div>
-        <div className={buttonClass}> Fold </div>
+        <div className={buttonClass} onClick={() => enabled && bid(curBid)}>
+          {' '}
+          Call{' '}
+        </div>
+        <div className={buttonClass} onClick={() => enabled && bid(curBid + 1)}>
+          {' '}
+          Rise{' '}
+        </div>
+        <div className={buttonClass} onClick={() => enabled && fold()}>
+          {' '}
+          Fold{' '}
+        </div>
       </div>
     </div>
   );
@@ -229,7 +243,10 @@ export const GameView = (props: IGameViewProps) => {
               props.gameInfo!.contractDeckDecrypted,
               props.gameInfo!.selfIndex,
               props.gameInfo!.nextPlayerIndex,
-              props.gameInfo!.substatus
+              props.gameInfo!.bid,
+              props.gameInfo!.substatus,
+              props.bid,
+              props.fold
             )}
         </div>
       </div>

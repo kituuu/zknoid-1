@@ -41,6 +41,9 @@ import {
   proveInitialOpen,
   provePublicOpen,
   PublicOpenPublicInput,
+  FoldProofPublicInput,
+  proveFold,
+  FoldProof,
 } from 'zknoid-chain-dev/dist/src/poker/DecryptProof';
 import { randomBytes } from 'crypto';
 // import { getRoundIndexes } from 'zknoid-chain-dev/dist/src/poker/Poker';
@@ -224,6 +227,24 @@ const functions = {
     );
 
     return publicOpenProof.toJSON();
+  },
+
+  proveFold: async (args: { deckJSON: any; pkBase58: any; round: any }) => {
+    console.log('Prove public open started');
+    let deck = EncryptedDeck.fromJSONString(args.deckJSON);
+    let privateKey: PrivateKey = PrivateKey.fromBase58(args.pkBase58);
+    let round = UInt64.fromJSON(args.round);
+
+    // @ts-ignore
+    let publicInput = new FoldProofPublicInput({
+      deck,
+      round,
+    });
+
+    let publicOutput = proveFold(publicInput, privateKey);
+    const foldProof = await mockProof(publicOutput, FoldProof, publicInput);
+
+    return foldProof.toJSON();
   },
 };
 
