@@ -29,6 +29,7 @@ export interface IGameInfo {
   contractDeck: EncryptedDeck;
   contractDeckDecrypted: EncryptedDeck;
   deck: ICard[];
+  nextPlayerIndex: number;
   nextUser: PublicKey;
   agrigatedPubKey: PublicKey;
   players: number;
@@ -188,6 +189,7 @@ export const usePokerMatchQueueStore = create<
         });
 
         let nextUserIndex = gameInfo.round.curPlayerIndex;
+        let nextPlayerIndex = +nextUserIndex.toString();
         // @ts-ignore
         let userIndex = new GameIndex({
           gameId: activeGameId!,
@@ -245,6 +247,7 @@ export const usePokerMatchQueueStore = create<
             contractDeck,
             contractDeckDecrypted,
             deck,
+            nextPlayerIndex,
             nextUser,
             agrigatedPubKey,
             players,

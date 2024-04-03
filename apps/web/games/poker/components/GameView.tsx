@@ -24,9 +24,9 @@ const substatusToString = (n: number): string => {
   console.log(n);
   switch (n) {
     case 1:
-      return 'Bid phase';
-    case 2:
       return 'Reveal phase';
+    case 2:
+      return 'Bid phase';
   }
 
   return 'Unknown phase';
@@ -49,6 +49,30 @@ const statusToString = (n: number): string => {
   }
 
   return 'Unknown status';
+};
+
+const getSelfCardsDiv = (
+  ed: EncryptedDeck,
+  selfIndex: number,
+  curPlayer: number,
+  phase: number
+): ReactElement => {
+  const enabled = phase == 2 && selfIndex == curPlayer; // Bid phase and our next move
+  const buttonEnabledProps = enabled
+    ? 'cursor-pointer hover:bg-white hover:text-black text-white'
+    : 'text-grey';
+  const buttonClass =
+    'rounded border border-white px-4 py-2 font-bold ' + buttonEnabledProps;
+  return (
+    <div className="flex h-full justify-center">
+      {getPlayerCardsDiv(ed, selfIndex)}
+      <div className="flex flex-col justify-between">
+        <div className={buttonClass}> Call </div>
+        <div className={buttonClass}> Rise </div>
+        <div className={buttonClass}> Fold </div>
+      </div>
+    </div>
+  );
 };
 
 const getPlayerCardsDiv = (ed: EncryptedDeck, i: number): ReactElement => {
@@ -201,9 +225,11 @@ export const GameView = (props: IGameViewProps) => {
         </div>
         <div className="h-40 w-full flex-none justify-center">
           {props.gameInfo?.contractDeckDecrypted &&
-            getPlayerCardsDiv(
-              props.gameInfo?.contractDeckDecrypted,
-              props.gameInfo?.selfIndex
+            getSelfCardsDiv(
+              props.gameInfo!.contractDeckDecrypted,
+              props.gameInfo!.selfIndex,
+              props.gameInfo!.nextPlayerIndex,
+              props.gameInfo!.substatus
             )}
         </div>
       </div>
