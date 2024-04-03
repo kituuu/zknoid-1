@@ -41,6 +41,7 @@ import {
   WinnerInfo,
 } from './types';
 import { CombinationProof } from './CombProof';
+import { Game } from 'src/examples/BiggerCard/BiggerCards';
 
 const MAX_PLAYERS = 2;
 
@@ -131,7 +132,6 @@ export class Poker extends MatchMaker {
           id: newId,
           maxPlayers, // Change depending on opponents count. For now only 2 players
         }),
-        status: UInt64.from(GameStatus.SETUP),
         deck: initialEnctyptedDeck,
         agrigatedPubKey,
         round: RoundInfo.initial(maxPlayers),
@@ -146,7 +146,7 @@ export class Poker extends MatchMaker {
       this.players.set(
         new GameIndex({
           gameId: newId,
-          index: UInt64.from(i),
+          index: UInt64.from(i + 1), // 0 index should be empty
         }),
         players[i],
       );
@@ -156,7 +156,7 @@ export class Poker extends MatchMaker {
       this.userBalance.set(
         new GameIndex({
           gameId: newId,
-          index: UInt64.from(i),
+          index: UInt64.from(i + 1), // 0 index should be empty
         }),
         UInt64.from(INITAL_BALANCE),
       );
@@ -186,7 +186,7 @@ export class Poker extends MatchMaker {
 
     let game = forceOptionValue(this.games.get(gameId));
     // Check that game in setup status
-    assert(game.status.equals(UInt64.from(GameStatus.SETUP)));
+    assert(game.round.status.equals(UInt64.from(GameStatus.SETUP)));
 
     let currentPlayer = this.getUserByIndex(gameId, game.round.curPlayerIndex);
 
@@ -200,10 +200,10 @@ export class Poker extends MatchMaker {
     // Update deck in games
     game.deck = shuffleProof.publicOutput.newDeck;
     game.nextPlayer(this.isFold);
-    game.status = Provable.if(
+    game.round.status = Provable.if(
       game.round.curPlayerIndex.equals(UInt64.from(0)), // turn returned to first player
       UInt64.from(GameStatus.INITIAL_OPEN),
-      game.status,
+      game.round.status,
     );
 
     this.games.set(gameId, game);
@@ -231,7 +231,7 @@ export class Poker extends MatchMaker {
     let uii = new UserActionIndex({
       gameId,
       user: sender,
-      phase: game.status,
+      phase: game.round.status,
     });
 
     assert(this.userActionsDone.get(uii).isSome.not());
@@ -298,7 +298,27 @@ export class Poker extends MatchMaker {
   }
 
   @runtimeMethod()
-  public sendResult(gameId: UInt64, proof: CombinationProof) {
+  public sendResult(
+    gameId: UInt64,
+    playerIndex: UInt64,
+    proof: CombinationProof,
+  ) {
+    const sessionSender = this.sessions.get(this.transaction.sender.value);
+    const sender = Provable.if(
+      sessionSender.isSome,
+      sessionSender.value,
+      this.transaction.sender.value,
+    );
+
+    let userKey = new GameIndex({
+      gameId,
+      index: playerIndex,
+    });
+
+    let player = this.players.get(userKey).value;
+
+    assert(sender.equals(player), 'Wrong player index');
+
     // #TODO check for user
 
     let game = forceOptionValue(this.games.get(gameId));
@@ -318,7 +338,7 @@ export class Poker extends MatchMaker {
     );
     game.winnerInfo.currentWinner = Provable.if(
       compRes.isPositive(),
-      this.transaction.sender.value,
+      playerIndex,
       game.winnerInfo.currentWinner,
     );
 
@@ -379,7 +399,7 @@ export class Poker extends MatchMaker {
     game.nextPlayer(this.isFold);
 
     // Update phaze if needed
-    game.checkAndTransistToReveal(this.userBid);
+    game.checkAndTransistToReveal(this.userBid, this.network.block.height);
 
     this.games.set(gameId, game);
   }
@@ -430,15 +450,81 @@ export class Poker extends MatchMaker {
     game.nextPlayer(this.isFold);
 
     // Update phaze if needed
-    game.checkAndTransistToReveal(this.userBid);
+    game.checkAndTransistToReveal(this.userBid, this.network.block.height);
   }
 
   @runtimeMethod()
-  public claimWin(gameId: UInt64) {
+  public claimWin(gameId: UInt64, playerIndex: UInt64) {
     // In case others folded
+    let game = forceOptionValue(this.games.get(gameId));
+
+    // All others folded
+    assert(game.round.foldsAmount.equals(game.meta.maxPlayers.sub(1)));
+    const playerKey = new GameIndex({
+      gameId,
+      index: playerIndex,
+    });
+    const isPlayerFolded = this.isFold.get(playerKey).value;
+    assert(isPlayerFolded.not(), 'Cant claim win for folded user');
+
+    this.startNewRound(game, playerIndex);
+    this.games.set(gameId, game);
+  }
+
+  @runtimeMethod()
+  public endRound(gameId: UInt64) {
+    let game = forceOptionValue(this.games.get(gameId));
+
+    assert(game.winnerInfo.timeOutFinished(this.network.block.height));
+
+    // Transfer bank to winner, if it exists. If not money goes to next round bank
+    const winner = game.winnerInfo.currentWinner;
+
+    this.startNewRound(game, winner);
+
+    // Update bank, if it was not distributed
+    const zeroKey = new GameIndex({
+      gameId,
+      index: UInt64.zero,
+    });
+
+    const zeroBalance = this.userBalance.get(zeroKey).value;
+    game.round.bank = zeroBalance;
+    this.userBalance.set(zeroKey, UInt64.zero);
+    this.games.set(gameId, game);
   }
 
   public proveOpponentTimeout(gameId: UInt64): void {}
+
+  // Do not call this.games.set. So it is responsibility of calling contract to call it
+  private startNewRound(game: GameInfo, winner: UInt64): void {
+    this.payWinner(game, winner);
+
+    // Update round
+    game.cleanRoundInfo();
+
+    this.clearFolds(game.meta.id);
+  }
+
+  private payWinner(game: GameInfo, index: UInt64): void {
+    const winnerKey = new GameIndex({
+      gameId: game.meta.id,
+      index,
+    });
+    const curWinnerBalance = this.userBalance.get(winnerKey).value;
+
+    this.userBalance.set(winnerKey, curWinnerBalance.add(game.round.bank));
+  }
+
+  private clearFolds(gameId: UInt64): void {
+    for (let i = 1; i < MAX_PLAYERS + 1; i++) {
+      let key = new GameIndex({
+        gameId,
+        index: UInt64.from(i),
+      });
+      this.isFold.set(key, Bool(false));
+    }
+  }
 
   private getUserByIndex(gameId: UInt64, index: UInt64): PublicKey {
     return forceOptionValue(

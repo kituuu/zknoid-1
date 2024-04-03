@@ -22,6 +22,8 @@ export const MAX_PLAYERS = 2;
 
 export const INITAL_BALANCE = 100;
 
+export const WIN_CLAIM_TIMEOUT_IN_BLOCKS = 10;
+
 const boolToInt = (b: Bool): Int64 => {
   return Provable.if(b, Int64.from(1), Int64.from(-1));
 };
@@ -319,13 +321,30 @@ export enum GameSubStatus {
 
 export class WinnerInfo extends Struct({
   highestCombinations: Provable.Array(Combination, 6),
-  currentWinner: PublicKey,
+  currentWinner: UInt64,
+  timeOutStated: Bool,
+  timeOutStartBlock: UInt64,
 }) {
   static initial(): WinnerInfo {
     return new WinnerInfo({
       highestCombinations: [...Array(6)].map(Combination.zero),
-      currentWinner: PublicKey.empty(),
+      currentWinner: UInt64.from(0), // No player should have 0 index. Probably can use it as bank, but it can cause misunerstanding
+      timeOutStated: Bool(false),
+      timeOutStartBlock: UInt64.from(0),
     });
+  }
+
+  startCountdown(shouldStart: Bool, blockHeight: UInt64): void {
+    this.timeOutStated = shouldStart; // Can it be overwriten?
+    this.timeOutStartBlock = blockHeight;
+  }
+
+  timeOutFinished(curBlock: UInt64): Bool {
+    return this.timeOutStated.and(
+      curBlock.greaterThan(
+        this.timeOutStartBlock.add(WIN_CLAIM_TIMEOUT_IN_BLOCKS),
+      ),
+    );
   }
 }
 
@@ -336,6 +355,7 @@ export class GameMeta extends Struct({
 
 export class RoundInfo extends Struct({
   index: UInt64,
+  status: UInt64,
   subStatus: UInt64,
   curPlayerIndex: UInt64,
   decLeft: UInt64,
@@ -346,6 +366,7 @@ export class RoundInfo extends Struct({
   static initial(maxPlayers: UInt64): RoundInfo {
     return new RoundInfo({
       index: UInt64.zero,
+      status: UInt64.from(GameStatus.SETUP),
       subStatus: UInt64.from(GameSubStatus.NONE),
       curPlayerIndex: UInt64.zero,
       decLeft: maxPlayers,
@@ -358,7 +379,6 @@ export class RoundInfo extends Struct({
 
 export class GameInfo extends Struct({
   meta: GameMeta,
-  status: UInt64,
   deck: EncryptedDeck,
   agrigatedPubKey: PublicKey,
   round: RoundInfo,
@@ -412,7 +432,10 @@ export class GameInfo extends Struct({
     );
   }
 
-  checkAndTransistToReveal(userBids: StateMap<GameRoundIndex, UInt64>): void {
+  checkAndTransistToReveal(
+    userBids: StateMap<GameRoundIndex, UInt64>,
+    blockHeight: UInt64,
+  ): void {
     let curUserBid = userBids.get(
       new GameRoundIndex({
         gameId: this.meta.id,
@@ -429,11 +452,14 @@ export class GameInfo extends Struct({
       this.round.index,
     );
 
-    this.status = Provable.if(
-      this.round.index.equals(UInt64.from(LAST_ROUND)),
+    const isLastRound = this.round.index.equals(UInt64.from(LAST_ROUND));
+    this.round.status = Provable.if(
+      isLastRound,
       UInt64.from(GameStatus.ENDING),
-      this.status,
+      this.round.status,
     );
+
+    this.winnerInfo.startCountdown(isLastRound, blockHeight);
 
     this.round.subStatus = Provable.if(
       bidFinished,
@@ -454,6 +480,11 @@ export class GameInfo extends Struct({
 
   inReveal(): Bool {
     return this.round.subStatus.equals(UInt64.from(GameSubStatus.REVEAL));
+  }
+
+  cleanRoundInfo(): void {
+    this.round = RoundInfo.initial(this.meta.maxPlayers);
+    this.winnerInfo = WinnerInfo.initial();
   }
 }
 

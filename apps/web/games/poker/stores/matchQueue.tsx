@@ -198,7 +198,7 @@ export const usePokerMatchQueueStore = create<
         let nextUser =
           (await client.query.runtime.Poker.players.get(userIndex))!;
 
-        let status = +gameInfo.status.toString();
+        let status = +gameInfo.round.status.toString();
         let substatus = +gameInfo.round.subStatus.toString();
         let agrigatedPubKey = gameInfo.agrigatedPubKey;
         let players = +gameInfo.meta.maxPlayers.toString();
