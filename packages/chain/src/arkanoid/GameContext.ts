@@ -11,6 +11,7 @@ import {
 import { RandomGenerator } from '../engine';
 import {
   BRICK_HALF_WIDTH,
+  COLLISION_FINDING_ITERATIONS,
   DEFAULT_BALL_LOCATION_X,
   DEFAULT_BALL_LOCATION_Y,
   DEFAULT_BALL_SPEED_X,
@@ -29,7 +30,7 @@ import {
   SCORE_PER_TICKS,
   SEED_MULTIPLIER,
 } from './constants';
-import type { Tick } from './types';
+import type { Collision, Tick } from './types';
 import { Ball, Brick, Bricks, IntPoint, Platform } from './types';
 import { gr, inRange } from './utility';
 
@@ -200,6 +201,24 @@ export class GameContext extends Struct({
 
     // Update nearest bricks
     this.updateNearestBricks();
+
+    /*
+      1) Check collision for each nearest brick
+      2) Pick earliest collision
+      3) Update values according to this collision
+    */
+
+    for (let i = 0; i < COLLISION_FINDING_ITERATIONS; i++) {
+      let collisions: Collision[] = [];
+
+      for (let j = 0; j < NEAREST_BRICKS_NUM; j++) {
+        collisions[j] = this.ball.checkBrickCollision(this.nearestBricks[j]);
+      }
+
+      let collision = pickNearestCollision(collisions);
+
+      this.applyCollision(collision);
+    }
 
     //6) Check bricks bump
     for (let j = 0; j < NEAREST_BRICKS_NUM; j++) {
@@ -489,6 +508,8 @@ export class GameContext extends Struct({
       );
     }
   }
+
+  applyCollision(collision: Collision): void {}
 }
 export function createBricksBySeed(seed: Field): Bricks {
   const generator = RandomGenerator.from(seed);
@@ -532,6 +553,10 @@ export function createBricksBySeed(seed: Field): Bricks {
 
   return new Bricks({ bricks });
 }
+
+const pickNearestCollision = (collisions: Collision[]): Collision => {
+  return collisions[0];
+};
 
 export function loadGameContext(bricks: Bricks, debug: Bool) {
   const score = UInt64.from(INITIAL_SCORE);

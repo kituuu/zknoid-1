@@ -37,3 +37,5 @@ export const TICK_PERIOD = 500;
 export const SEED_MULTIPLIER = 5837482;
 
 export const MAX_BRICK_HEALTH = 3;
+
+export const COLLISION_FINDING_ITERATIONS = 2;
