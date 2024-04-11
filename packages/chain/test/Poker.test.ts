@@ -280,9 +280,6 @@ const sendCombinations = async (
 };
 
 describe('game hub', () => {
-  it.skip('Log proof', async () => {
-    console.log(await dummyBase64Proof());
-  });
   it('Two players basic case', async () => {
     const appChain = TestingAppChain.fromRuntime({
       Poker,
