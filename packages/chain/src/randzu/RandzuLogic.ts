@@ -15,6 +15,7 @@ import {
 import { DEFAULT_GAME_COST, MatchMaker } from '../engine/MatchMaker';
 import type { QueueListItem } from '../engine/MatchMaker';
 import { UInt64 as ProtoUInt64 } from '@proto-kit/library';
+import { Lobby } from '../engine/LobbyManager';
 
 const RANDZU_FIELD_SIZE = 15;
 const CELLS_LINE_TO_WIN = 5;
@@ -124,7 +125,39 @@ export class RandzuLogic extends MatchMaker {
 
   @state() public gamesNum = State.from<UInt64>(UInt64);
 
-  public override initGame(
+  public override initGame(lobby: Lobby, shouldUpdate: Bool): UInt64 {
+    const currentGameId = this.getNextGameId();
+
+    // Setting active game if opponent found
+    this.games.set(
+      Provable.if(shouldUpdate, currentGameId, UInt64.from(0)),
+      new GameInfo({
+        player1: lobby.players[0],
+        player2: lobby.players[1],
+        currentMoveUser: lobby.players[0],
+        lastMoveBlockHeight: this.network.block.height,
+        field: RandzuField.from(
+          Array(RANDZU_FIELD_SIZE).fill(Array(RANDZU_FIELD_SIZE).fill(0)),
+        ),
+        winner: PublicKey.empty(),
+      }),
+    );
+
+    this.gameFund.set(currentGameId, this.getParticipationPrice().mul(2));
+
+    return super.initGame(lobby, shouldUpdate);
+  }
+
+  public override getNextGameId(): UInt64 {
+    return this.gamesNum.get().orElse(UInt64.from(1));
+  }
+  public override updateNextGameId(shouldUpdate: Bool): void {
+    let curGameId = this.getNextGameId();
+
+    this.gamesNum.set(Provable.if(shouldUpdate, curGameId.add(1), curGameId));
+  }
+
+  public initGameOld(
     opponentReady: Bool,
     player: PublicKey,
     opponent: Option<QueueListItem>,
@@ -151,38 +184,14 @@ export class RandzuLogic extends MatchMaker {
     this.gamesNum.set(currentGameId);
     this.gameFund.set(currentGameId, this.getParticipationPrice().mul(2));
 
-    super.initGame(opponentReady, player, opponent);
+    // super.initGame(...);
 
     return currentGameId;
   }
 
   @runtimeMethod()
   public proveOpponentTimeout(gameId: UInt64): void {
-    const sessionSender = this.sessions.get(this.transaction.sender.value);
-    const sender = Provable.if(
-      sessionSender.isSome,
-      sessionSender.value,
-      this.transaction.sender.value,
-    );
-
-    const game = this.games.get(gameId);
-    assert(game.isSome, 'Invalid game id');
-    assert(game.value.currentMoveUser.equals(sender), `Not your move`);
-    assert(game.value.winner.equals(PublicKey.empty()), `Game finished`);
-
-    const isTimeout = this.network.block.height
-      .sub(game.value.lastMoveBlockHeight)
-      .greaterThan(UInt64.from(MOVE_TIMEOUT_IN_BLOCKS));
-
-    assert(isTimeout, 'Timeout not reached');
-
-    game.value.currentMoveUser = Provable.if(
-      game.value.currentMoveUser.equals(game.value.player1),
-      game.value.player2,
-      game.value.player1,
-    );
-    game.value.lastMoveBlockHeight = this.network.block.height;
-    this.games.set(gameId, game.value);
+    super.proveOpponentTimeout(gameId, true);
   }
 
   @runtimeMethod()
@@ -282,6 +291,19 @@ export class RandzuLogic extends MatchMaker {
       PublicKey.empty(),
     );
 
+    const winnerShare = ProtoUInt64.from(
+      Provable.if(winProposed, UInt64.from(1), UInt64.from(0)),
+    );
+
+    this.acquireFunds(
+      gameId,
+      game.value.winner,
+      PublicKey.empty(),
+      winnerShare,
+      ProtoUInt64.from(0),
+      ProtoUInt64.from(1),
+    );
+
     game.value.field = newField;
     game.value.currentMoveUser = Provable.if(
       game.value.currentMoveUser.equals(game.value.player1),
@@ -300,12 +322,5 @@ export class RandzuLogic extends MatchMaker {
       Provable.if(winProposed, game.value.player1, PublicKey.empty()),
       UInt64.from(0),
     );
-  }
-
-  @runtimeMethod()
-  public win(gameId: UInt64): void {
-    let game = this.games.get(gameId).value;
-    assert(game.winner.equals(PublicKey.empty()).not());
-    this.getFunds(gameId, game.winner, PublicKey.empty(), ProtoUInt64.from(1), ProtoUInt64.from(0));
   }
 }

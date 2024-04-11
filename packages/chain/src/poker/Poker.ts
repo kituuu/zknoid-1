@@ -43,6 +43,7 @@ import {
 } from './types';
 import { CombinationProof } from './CombProof';
 import { Game } from 'src/examples/BiggerCard/BiggerCards';
+import { Lobby } from 'src/engine/LobbyManager';
 
 const MAX_PLAYERS = 2;
 
@@ -103,31 +104,29 @@ export class Poker extends MatchMaker {
   // gameId + userIndex => folded or not
   @state() public isFold = StateMap.from<GameIndex, Bool>(GameIndex, Bool);
 
-  public override initGame(
-    opponentReady: Bool,
-    player: PublicKey,
-    opponent: Option<QueueListItem>,
-  ): UInt64 {
-    let newId = this.lastGameId.get().orElse(UInt64.from(0));
-    this.lastGameId.set(newId.add(1));
+  public override initGame(lobby: Lobby, shouldInit: Bool): UInt64 {
+    const newId = this.getNextGameId();
 
-    let opp = Provable.if(
-      opponent.isSome,
-      this.userToSession.get(opponent.value.userAddress).orElse(player),
-      player, // Workaround. PublicKey.zero cannot be transformed to Group elem
+    // let opp = Provable.if(
+    //   opponent.isSome,
+    //   this.userToSession.get(opponent.value.userAddress).orElse(player),
+    //   player, // Workaround. PublicKey.zero cannot be transformed to Group elem
+    // );
+
+    // assert(
+    //   this.userToSession.get(player).value.equals(PublicKey.empty()).not(),
+    // );
+
+    // Protokit workaround
+    let pubKeyList = lobby.players.map((player) =>
+      Provable.if(player.isEmpty(), this.transaction.sender.value, player),
     );
-
-    assert(
-      this.userToSession.get(player).value.equals(PublicKey.empty()).not(),
-    );
-
-    let pubKeyList = [this.userToSession.get(player).orElse(player), opp];
 
     let agrigatedPubKey = this.getAgrigatedPubKey(pubKeyList);
     let maxPlayers = UInt64.from(2);
 
     this.games.set(
-      Provable.if(opponentReady, newId, UInt64.zero),
+      Provable.if(shouldInit, newId, UInt64.zero),
       new GameInfo({
         meta: new GameMeta({
           id: newId,
@@ -141,7 +140,7 @@ export class Poker extends MatchMaker {
     );
 
     /// #TODO Transform to provable
-    let players = [opponent.value.userAddress, player];
+    let players = lobby.players;
 
     for (let i = 0; i < players.length; i++) {
       this.players.set(
@@ -163,7 +162,16 @@ export class Poker extends MatchMaker {
       );
     }
 
-    return UInt64.from(newId);
+    return super.initGame(lobby, shouldInit);
+  }
+
+  public override getNextGameId(): UInt64 {
+    return this.gamesNum.get().orElse(UInt64.from(1));
+  }
+  public override updateNextGameId(shouldUpdate: Bool): void {
+    let curGameId = this.getNextGameId();
+
+    this.gamesNum.set(Provable.if(shouldUpdate, curGameId.add(1), curGameId));
   }
 
   // #TODO change to provable

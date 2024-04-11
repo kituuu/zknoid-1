@@ -112,12 +112,12 @@ export const Competitions = ({
 
   useEffect(() => {
     const fundsMaximum = competitions.reduce((max, competition) => {
-      return Math.max(max, Number(competition.reward));
+      return Math.max(max, Number(competition.reward / 10n**9n));
     }, -Infinity);
     setFundsAbsoluteMaximum(fundsMaximum);
 
     const feesMaximum = competitions.reduce((max, competition) => {
-      return Math.max(max, Number(competition.participationFee));
+      return Math.max(max, Number(competition.participationFee / 10n**9n));
     }, -Infinity);
     setFeesAbsoluteMaximum(feesMaximum);
   }, [competitions]);
@@ -271,7 +271,9 @@ export const Competitions = ({
         </div>
         <div className={'flex w-full flex-col gap-4'}>
           <div className={'flex flex-col justify-between lg:flex-row'}>
-            <div className={'text-headline-1'}>Competition list</div>
+            <div className={'text-headline-2 lg:text-headline-1'}>
+              Competition list
+            </div>
             <div
               className={
                 'group hidden flex-row gap-2 rounded-[5px] border bg-bg-dark p-2 hover:border-left-accent lg:flex'
@@ -357,7 +359,7 @@ export const Competitions = ({
             />
             <div
               className={
-                'group flex flex-row gap-2 rounded-[5px] border bg-bg-dark p-2 hover:border-left-accent lg:hidden'
+                'group flex flex-row gap-2 rounded-[5px] border bg-bg-dark p-1 hover:border-left-accent lg:hidden lg:p-2'
               }
             >
               <svg
@@ -390,7 +392,7 @@ export const Competitions = ({
                 type="search"
                 placeholder={'Enter competition or game name...'}
                 className={
-                  'max-w-[200px] appearance-none bg-bg-dark placeholder:font-plexsans placeholder:text-main placeholder:opacity-50 focus:border-none focus:outline-none group-hover:focus:text-left-accent group-hover:focus:placeholder:text-left-accent/80 lg:min-w-[300px]'
+                  'max-w-[210px] appearance-none bg-bg-dark placeholder:font-plexsans placeholder:text-main placeholder:opacity-50 focus:border-none focus:outline-none group-hover:focus:text-left-accent group-hover:focus:placeholder:text-left-accent/80 lg:min-w-[300px]'
                 }
                 value={searchValue}
                 onChange={(event) => {
@@ -440,12 +442,12 @@ export const Competitions = ({
               if (timelineFilter(item)) return true;
 
               if (
-                item.participationFee >= feesMinValue &&
-                item.participationFee <= feesMaxValue
+                item.participationFee >= feesMinValue * 10 ** 9 &&
+                item.participationFee <= feesMaxValue * 10 ** 9
               )
                 return true;
 
-              if (item.reward >= fundsMinValue && item.reward <= fundsMaxValue)
+              if (item.reward >= fundsMinValue && item.reward <= fundsMaxValue * 10 ** 9)
                 return true;
             })
             .filter((value) => searchFilter(value))

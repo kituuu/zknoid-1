@@ -12,7 +12,6 @@ import ChangeSvg from '@/public/image/bridge/change.svg';
 
 import Image from 'next/image';
 import {
-  ALL_ZKNOID_L1_ASSETS,
   L1_ASSETS,
   L2_ASSET,
   ZkNoidAsset,
@@ -22,20 +21,13 @@ import { useMinaBalancesStore } from '@/lib/stores/minaBalances';
 import { AnimatePresence, motion } from 'framer-motion';
 import AppChainClientContext from '@/lib/contexts/AppChainClientContext';
 import 'reflect-metadata';
-
-import { ClientAppChain } from '@proto-kit/sdk';
-import { PendingTransaction, UnsignedTransaction } from '@proto-kit/sequencer';
-import { AccountUpdate, Mina, PublicKey, UInt64 } from 'o1js';
-import { useCallback, useEffect } from 'react';
-import { create } from 'zustand';
-
-import { immer } from 'zustand/middleware/immer';
-
+import { AccountUpdate, Mina, PublicKey } from 'o1js';
+import {  useEffect } from 'react';
 import { BRIDGE_ADDR } from '@/app/constants';
-
-import { zkNoidConfig } from '@/games/config';
 import { ProtokitLibrary, ZNAKE_TOKEN_ID } from 'zknoid-chain-dev';
 import { formatUnits } from '@/lib/unit';
+import { api } from '@/trpc/react';
+import { getEnvContext } from '@/lib/envContext';
 
 const BridgeInput = ({
   assets,
@@ -152,6 +144,8 @@ export const DepositMenuItem = () => {
     console.log('Balance update');
   }, [protokitBalancesStore.balances[networkStore.address!]]);
 
+  const logBridged = api.logging.logBridged.useMutation();
+
   const bridge = async (amount: bigint) => {
     console.log('Bridging', amount);
     const l1tx = await Mina.transaction(() => {
@@ -191,17 +185,26 @@ export const DepositMenuItem = () => {
 
     await l2tx.sign();
     await l2tx.send();
+
+    await logBridged.mutateAsync({
+      userAddress: network.address ?? '',
+      amount: amountIn,
+      envContext: getEnvContext()
+    })
   };
   const testBalanceGetter = useTestBalanceGetter();
+  const balancesStore = useProtokitBalancesStore();
+  const network = useNetworkStore();
+
   const rate = 1;
   return (
     <>
       <HeaderCard
         svg={'top-up'}
         text="Top up"
-        onClick={() => bridgeStore.setOpen(100n)}
+        onClick={() => bridgeStore.setOpen(10n * 10n**9n)}
       />
-      {contextAppChainClient && (
+      {contextAppChainClient && network.address && balancesStore.balances[network.address] < 100 * 10 ** 9 && (
         <HeaderCard
           svg={'top-up'}
           text="Get test balance"

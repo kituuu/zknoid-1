@@ -1,23 +1,22 @@
 import 'reflect-metadata';
 
-import { ClientAppChain } from '@proto-kit/sdk';
-import { PendingTransaction, UnsignedTransaction } from '@proto-kit/sequencer';
-import { AccountUpdate, Mina, PublicKey, UInt64 } from 'o1js';
+import { type ClientAppChain } from '@proto-kit/sdk';
+import { PublicKey } from 'o1js';
 import { useCallback, useContext, useEffect } from 'react';
 import { create } from 'zustand';
 
 import { immer } from 'zustand/middleware/immer';
-
-import { BRIDGE_ADDR } from '@/app/constants';
 
 import { useNetworkStore } from './network';
 import { useProtokitChainStore } from './protokitChain';
 import AppChainClientContext from '../contexts/AppChainClientContext';
 
 import { DefaultRuntimeModules } from '../runtimeModules';
-import { zkNoidConfig } from '@/games/config';
-import { Balances, ProtokitLibrary, ZNAKE_TOKEN_ID } from 'zknoid-chain-dev';
+import { Balances, ProtoUInt64, ZNAKE_TOKEN_ID } from 'zknoid-chain-dev';
+
 import { BalancesKey } from '@proto-kit/library';
+import { api } from '@/trpc/react';
+import { getEnvContext } from '../envContext';
 
 export interface BalancesState {
   loading: boolean;
@@ -73,6 +72,7 @@ export const useObserveProtokitBalance = ({
   useEffect(() => {
     if (!network.protokitClientStarted) return;
     if (!network.walletConnected) return;
+    if (!network.address) return;
     if (!client) throw Error('Client is not set');
 
     balances.loadBalance(client, network.address!);
@@ -137,10 +137,12 @@ export const useTestBalanceGetter = () => {
   const contextAppChainClient = useContext(
     AppChainClientContext
   ) as ClientAppChain<typeof DefaultRuntimeModules, any, any, any>;
+  const logTestBalanceRecevied =
+    api.logging.logTestBalanceRecevied.useMutation();
 
   return useCallback(async () => {
     if (!network.address) return;
-    if (balancesStore.balances[network.address]) return;
+    if (balancesStore.balances[network.address] >= 100 * 10 ** 9) return;
 
     const balances = contextAppChainClient.runtime.resolve(
       'Balances'
@@ -153,11 +155,16 @@ export const useTestBalanceGetter = () => {
       balances.addBalance(
         ZNAKE_TOKEN_ID,
         sender,
-        ProtokitLibrary.UInt64.from(defaultBalance)
+        ProtoUInt64.from(defaultBalance)
       );
     });
 
     await l2tx.sign();
     await l2tx.send();
+
+    await logTestBalanceRecevied.mutateAsync({
+      userAddress: network.address!,
+      envContext: getEnvContext(),
+    });
   }, [network.walletConnected, balancesStore.balances]);
 };

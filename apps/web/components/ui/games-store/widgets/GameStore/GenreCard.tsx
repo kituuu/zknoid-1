@@ -46,10 +46,11 @@ export const GenreCard = ({
           }}
           height={height}
           isStopped={!visible && false}
+          isClickToPauseDisabled={true}
         ></Lottie>
       </div>
 
-      <div className="z-0 text-headline-3">{genre}</div>
+      <div className="z-0 text-main lg:text-headline-3">{genre}</div>
     </div>
   );
 };
