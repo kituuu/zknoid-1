@@ -44,6 +44,7 @@ import {
 import { CombinationProof } from './CombProof';
 import { Game } from 'src/examples/BiggerCard/BiggerCards';
 import { Lobby } from 'src/engine/LobbyManager';
+import { PokerMatchMaker } from './Lobby/PokerMatchMaking';
 
 const MAX_PLAYERS = 2;
 
@@ -64,7 +65,7 @@ export const initialEnctyptedDeck = new EncryptedDeck({
 });
 
 @runtimeModule()
-export class Poker extends MatchMaker {
+export class Poker extends PokerMatchMaker {
   @state() public games = StateMap.from<UInt64, GameInfo>(UInt64, GameInfo);
   @state() public lastGameId = State.from<UInt64>(UInt64);
 
