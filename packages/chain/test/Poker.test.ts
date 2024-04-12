@@ -310,7 +310,7 @@ describe('game hub', () => {
     {
       appChain.setSigner(alicePrivateKey);
       const tx1 = await appChain.transaction(alice, () => {
-        poker.register(alice, UInt64.zero);
+        poker.joinLobby(UInt64.from(1));
       });
       await tx1.sign();
       await tx1.send();
@@ -320,13 +320,21 @@ describe('game hub', () => {
 
       appChain.setSigner(bobPrivateKey);
       const tx2 = await appChain.transaction(bob, () => {
-        poker.register(bob, UInt64.zero);
+        poker.joinLobby(UInt64.from(1));
       });
       await tx2.sign();
       await tx2.send();
 
       block = await appChain.produceBlock();
       expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
+
+      // Start game
+      appChain.setSigner(alicePrivateKey);
+      const tx3 = await appChain.transaction(alice, () => {
+        poker.startGame(UInt64.from(1));
+      });
+      await tx3.sign();
+      await tx3.send();
     }
 
     await appChain.produceBlock();

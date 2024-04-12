@@ -46,7 +46,7 @@ import { Game } from 'src/examples/BiggerCard/BiggerCards';
 import { Lobby } from 'src/engine/LobbyManager';
 import { PokerMatchMaker } from './Lobby/PokerMatchMaking';
 
-const MAX_PLAYERS = 2;
+const MAX_PLAYERS = 6;
 
 function forceOptionValue<T>(o: Option<T>): T {
   assert(o.isSome, 'forceOptionValue fail. Trying to access unitialized value');
@@ -124,7 +124,7 @@ export class Poker extends PokerMatchMaker {
     );
 
     let agrigatedPubKey = this.getAgrigatedPubKey(pubKeyList);
-    let maxPlayers = UInt64.from(2);
+    let maxPlayers = lobby.curAmount;
 
     this.games.set(
       Provable.if(shouldInit, newId, UInt64.zero),
