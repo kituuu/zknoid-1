@@ -11,7 +11,7 @@ import { Balances, UInt64 as ProtoUInt64 } from '@proto-kit/library';
 import { inject } from 'tsyringe';
 import { ZNAKE_TOKEN_ID } from '../../constants';
 
-const PLAYER_AMOUNT = 2;
+const PLAYER_AMOUNT = 6;
 const DEFAULT_PARTICIPATION_FEE = ProtoUInt64.from(0);
 
 export class RoundIdxUser extends Struct({
