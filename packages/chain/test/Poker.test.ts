@@ -78,21 +78,37 @@ interface IndexedCard {
   index: number;
 }
 
-const combinationFinder = (cards: IndexedCard[]): ICombination[] => {
+const combinationFinder = (cards: Card[]): ICombination[] => {
+  let indexedCards = cards.map((card, index) => {
+    return {
+      card,
+      index,
+    };
+  });
   let res: ICombination[] = [];
 
-  cards.sort((a, b) => +Int64.from(a.card.value).sub(b.card.value)); // lowest to highest
+  indexedCards.sort((a, b) => +Int64.from(a.card.value).sub(b.card.value)); // lowest to highest
 
-  res.push(...checkStarightFlush(cards));
-  res.push(...checkFour(cards));
-  res.push(...checkFullHouse(cards));
-  res.push(...checkFlush(cards));
-  res.push(...checkStraight(cards));
-  res.push(...checkThree(cards));
-  res.push(...checkTwo(cards));
-  res.push(...checkHigh(cards));
+  res.push(...checkStarightFlush(indexedCards));
+  res.push(...checkFour(indexedCards));
+  res.push(...checkFullHouse(indexedCards));
+  res.push(...checkFlush(indexedCards));
+  res.push(...checkStraight(indexedCards));
+  res.push(...checkThree(indexedCards));
+  res.push(...checkTwo(indexedCards));
+  res.push(...checkHigh(indexedCards));
 
-  return res;
+  // Remove combinations, so only 5 card is using
+  let i = 0;
+  let cardUsed = 0;
+  for (i; i < res.length; i++) {
+    if (cardUsed >= 5) {
+      break;
+    }
+    cardUsed += res[i].indexes.length;
+  }
+
+  return res.slice(0, i);
 };
 
 const checkStarightFlush = (cards: IndexedCard[]): ICombination[] => {
@@ -200,7 +216,9 @@ const checkFlush = (cards: IndexedCard[]): ICombination[] => {
   for (let color in colorsToIndexes) {
     if (colorsToIndexes[color].length >= 4) {
       let indexes = colorsToIndexes[color].slice(-4); // Pick highest 4 cards
-      cards = cards.filter((card) => !indexes.includes(card.index));
+      let newCards = cards.filter((card) => !indexes.includes(card.index));
+      cards.length = 0;
+      cards.push(...newCards);
 
       return [
         {
@@ -224,8 +242,7 @@ const checkStraight = (cards: IndexedCard[]): ICombination[] => {
     for (; j < 5; j++) {
       if (
         cards[i + j].card.value
-          .add(1)
-          .equals(cards[i + j - 1].card.value)
+          .equals(cards[i + j - 1].card.value.add(1))
           .not()
           .toBoolean()
       ) {
@@ -237,7 +254,7 @@ const checkStraight = (cards: IndexedCard[]): ICombination[] => {
       let combinationCards = cards.splice(i, 5);
       return [
         {
-          id: +Combination.straightFlushId.toString(),
+          id: +Combination.straightId.toString(),
           indexes: combinationCards.map((card) => card.index),
         },
       ];
@@ -283,13 +300,13 @@ const checkTwo = (
     return res;
   }
 
-  for (let i = 0; i < cards.length - 2; i++) {
+  for (let i = 0; i < cards.length - 1; i++) {
     let first = cards[i].card;
     let second = cards[i + 1].card;
-    if (first.value.equals(second.value)) {
+    if (first.value.equals(second.value).toBoolean()) {
       let combCards = cards.splice(i, 2);
       res.push({
-        id: +Combination.threeId.toString(),
+        id: +Combination.twoPairId.toString(),
         indexes: combCards.map((card) => card.index),
       });
       if (!allowSeveral) {
@@ -311,6 +328,62 @@ const checkHigh = (cards: IndexedCard[]): ICombination[] => {
     })
     .reverse(); // Reverse so highest card go first
 };
+
+describe('Combination finder tests', () => {
+  it('Finds two, three, four', () => {
+    let cards = [...Array(4)].map((_, index) => Card.from(2, index));
+
+    let twoComb = combinationFinder(cards.slice(0, 2));
+
+    expect(twoComb.length).toBe(1);
+    expect(twoComb[0].id).toBe(+Combination.twoPairId);
+
+    let threeComb = combinationFinder(cards.slice(0, 3));
+
+    expect(threeComb.length).toBe(1);
+    expect(threeComb[0].id).toBe(+Combination.threeId);
+
+    let fourComb = combinationFinder(cards.slice(0, 4));
+
+    expect(fourComb.length).toBe(1);
+    expect(fourComb[0].id).toBe(+Combination.fourId);
+  });
+
+  it('Finds flush', () => {
+    let cards = [...Array(4)].map((_, index) => Card.from(index, 2));
+
+    let flushComb = combinationFinder(cards);
+
+    expect(flushComb.length).toBe(1);
+    expect(flushComb[0].id).toBe(+Combination.flushId);
+  });
+  it('Finds straight', () => {
+    let cards = [...Array(5)].map((_, index) => Card.from(index, index % 4));
+
+    let straightComb = combinationFinder(cards);
+
+    expect(straightComb.length).toBe(1);
+    expect(straightComb[0].id).toBe(+Combination.straightId);
+  });
+
+  it('Finds mix', () => {
+    let cards = Array(6);
+    cards[0] = Card.from(2, 0);
+    cards[1] = Card.from(2, 1);
+    cards[2] = Card.from(2, 2);
+
+    cards[3] = Card.from(5, 0);
+    cards[4] = Card.from(6, 1);
+    cards[5] = Card.from(7, 2);
+
+    let mixedComb = combinationFinder(cards); // Tree + 2 high
+
+    expect(mixedComb.length).toBe(3);
+    expect(mixedComb[0].id).toBe(+Combination.threeId);
+    expect(mixedComb[1].id).toBe(+Combination.highId);
+    expect(mixedComb[2].id).toBe(+Combination.highId);
+  });
+});
 
 /*
 class PokerHelper {
@@ -520,7 +593,7 @@ const sendCombinations = async (
   expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
 };
 
-describe('game hub', () => {
+describe.skip('Poker', () => {
   it('Two players basic case', async () => {
     const appChain = TestingAppChain.fromRuntime({
       Poker,

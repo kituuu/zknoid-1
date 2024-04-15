@@ -35,6 +35,13 @@ export class Card extends Struct({
   value: UInt64, // TODO check value \in [2, 14]
   color: UInt64, // TODO check value \in [0, 3]
 }) {
+  static from(value: number, color: number): Card {
+    return new Card({
+      value: UInt64.from(value),
+      color: UInt64.from(color),
+    });
+  }
+
   toEncryptedCard(): EncryptedCard {
     return new EncryptedCard({
       value: [
