@@ -7,6 +7,7 @@ import {
   Balances,
   Card,
   Combination,
+  EncryptedDeck,
   GameIndex,
   GameInfo,
   GameStatus,
@@ -78,25 +79,58 @@ interface IndexedCard {
   index: number;
 }
 
-const combinationFinder = (cards: Card[]): ICombination[] => {
-  let indexedCards = cards.map((card, index) => {
+const findCombination = (
+  deck: EncryptedDeck,
+  playerIndex: number,
+): ICombination[] => {
+  let indexedCards = [...Array(5)].map((_, i) => {
     return {
-      card,
-      index,
+      card: deck.cards[i].toCard(),
+      index: i,
     };
   });
+
+  indexedCards.push({
+    card: deck.cards[5 + 2 * playerIndex].toCard(),
+    index: 5 + 2 * playerIndex,
+  });
+
+  indexedCards.push({
+    card: deck.cards[5 + 2 * playerIndex + 1].toCard(),
+    index: 5 + 2 * playerIndex + 1,
+  });
+
+  return combinationFinder(indexedCards);
+};
+
+const combinationFinder = (indexedCards: IndexedCard[]): ICombination[] => {
+  const initSize = indexedCards.length;
+  const maxComb = 5;
   let res: ICombination[] = [];
 
   indexedCards.sort((a, b) => +Int64.from(a.card.value).sub(b.card.value)); // lowest to highest
 
   res.push(...checkStarightFlush(indexedCards));
+
   res.push(...checkFour(indexedCards));
   res.push(...checkFullHouse(indexedCards));
   res.push(...checkFlush(indexedCards));
   res.push(...checkStraight(indexedCards));
-  res.push(...checkThree(indexedCards));
-  res.push(...checkTwo(indexedCards));
-  res.push(...checkHigh(indexedCards));
+
+  let combLeft = maxComb - (initSize - indexedCards.length);
+  if (combLeft >= 3) {
+    res.push(...checkThree(indexedCards));
+  }
+
+  combLeft = maxComb - (initSize - indexedCards.length);
+  if (combLeft >= 2) {
+    res.push(...checkTwo(indexedCards));
+  }
+
+  combLeft = maxComb - (initSize - indexedCards.length);
+  if (combLeft >= 1) {
+    res.push(...checkHigh(indexedCards));
+  }
 
   // Remove combinations, so only 5 card is using
   let i = 0;
@@ -330,20 +364,28 @@ const checkHigh = (cards: IndexedCard[]): ICombination[] => {
 };
 
 describe('Combination finder tests', () => {
+  const indexCards = (cards: Card[]): IndexedCard[] => {
+    return cards.map((card, index) => {
+      return {
+        card,
+        index,
+      };
+    });
+  };
   it('Finds two, three, four', () => {
     let cards = [...Array(4)].map((_, index) => Card.from(2, index));
 
-    let twoComb = combinationFinder(cards.slice(0, 2));
+    let twoComb = combinationFinder(indexCards(cards.slice(0, 2)));
 
     expect(twoComb.length).toBe(1);
     expect(twoComb[0].id).toBe(+Combination.twoPairId);
 
-    let threeComb = combinationFinder(cards.slice(0, 3));
+    let threeComb = combinationFinder(indexCards(cards.slice(0, 3)));
 
     expect(threeComb.length).toBe(1);
     expect(threeComb[0].id).toBe(+Combination.threeId);
 
-    let fourComb = combinationFinder(cards.slice(0, 4));
+    let fourComb = combinationFinder(indexCards(cards.slice(0, 4)));
 
     expect(fourComb.length).toBe(1);
     expect(fourComb[0].id).toBe(+Combination.fourId);
@@ -352,7 +394,7 @@ describe('Combination finder tests', () => {
   it('Finds flush', () => {
     let cards = [...Array(4)].map((_, index) => Card.from(index, 2));
 
-    let flushComb = combinationFinder(cards);
+    let flushComb = combinationFinder(indexCards(cards));
 
     expect(flushComb.length).toBe(1);
     expect(flushComb[0].id).toBe(+Combination.flushId);
@@ -360,7 +402,7 @@ describe('Combination finder tests', () => {
   it('Finds straight', () => {
     let cards = [...Array(5)].map((_, index) => Card.from(index, index % 4));
 
-    let straightComb = combinationFinder(cards);
+    let straightComb = combinationFinder(indexCards(cards));
 
     expect(straightComb.length).toBe(1);
     expect(straightComb[0].id).toBe(+Combination.straightId);
@@ -376,7 +418,7 @@ describe('Combination finder tests', () => {
     cards[4] = Card.from(6, 1);
     cards[5] = Card.from(7, 2);
 
-    let mixedComb = combinationFinder(cards); // Tree + 2 high
+    let mixedComb = combinationFinder(indexCards(cards)); // Tree + 2 high
 
     expect(mixedComb.length).toBe(3);
     expect(mixedComb[0].id).toBe(+Combination.threeId);
@@ -566,8 +608,12 @@ const sendCombinations = async (
     .concat(
       game.deck.cards.slice(5 + 2 * playerIndex, 5 + 2 * playerIndex + 2),
     );
-  encryptedCardsPrepared[5].decrypt(senderPrivateKey);
-  encryptedCardsPrepared[6].decrypt(senderPrivateKey);
+  if (
+    +encryptedCardsPrepared[5].numOfEncryption != 0 ||
+    +encryptedCardsPrepared[6].numOfEncryption != 0
+  ) {
+    throw new Error('Player cards should be decoded first');
+  }
 
   let cardsPrepared = encryptedCardsPrepared.map((ec) => ec.toCard());
 
@@ -593,7 +639,7 @@ const sendCombinations = async (
   expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
 };
 
-describe.skip('Poker', () => {
+describe('Poker', () => {
   it('Two players basic case', async () => {
     const appChain = TestingAppChain.fromRuntime({
       Poker,
@@ -730,53 +776,25 @@ describe.skip('Poker', () => {
     //    First player: 4th and highest card
     //    Second player: 4th and highest card
 
-    // First
-    let firstCombinations: ICombination[] = [
-      {
-        id: +Combination.fourId.toString(),
-        indexes: [0, 1, 2, 3],
-      },
-      {
-        id: +Combination.highId,
-        indexes: [6],
-      },
-    ];
-
-    let secondCombinations = [
-      {
-        id: +Combination.fourId.toString(),
-        indexes: [0, 1, 2, 3],
-      },
-      {
-        id: +Combination.highId,
-        indexes: [8],
-      },
-    ];
-
     game = await getGame();
 
-    await sendCombinations(
-      appChain,
-      poker,
-      game,
-      alice.privateKey,
-      firstCombinations,
-      0,
-    );
+    for (let i = 0; i < players.length; i++) {
+      let player = players[i];
 
-    game = await getGame();
-    expect(
-      game.winnerInfo.currentWinner.equals(UInt64.from(0)).toBoolean(),
-    ).toBeTruthy();
+      game.deck.cards[5 + 2 * i].decrypt(player.privateKey);
+      game.deck.cards[5 + 2 * i + 1].decrypt(player.privateKey);
 
-    await sendCombinations(
-      appChain,
-      poker,
-      game,
-      bob.privateKey,
-      secondCombinations,
-      1,
-    );
+      let combination = findCombination(game.deck, i);
+
+      await sendCombinations(
+        appChain,
+        poker,
+        game,
+        player.privateKey,
+        combination,
+        i,
+      );
+    }
 
     game = await getGame();
     expect(
