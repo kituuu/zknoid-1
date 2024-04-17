@@ -30,7 +30,7 @@ import {
   SCORE_PER_TICKS,
   SEED_MULTIPLIER,
 } from './constants';
-import type { Collision, Tick } from './types';
+import { Collision, Tick } from './types';
 import { Ball, Brick, Bricks, IntPoint, Platform } from './types';
 import { gr, inRange } from './utility';
 
@@ -555,7 +555,18 @@ export function createBricksBySeed(seed: Field): Bricks {
 }
 
 const pickNearestCollision = (collisions: Collision[]): Collision => {
-  return collisions[0];
+  let result = collisions[0];
+  // collisions.length == NEAREST_BRICKS_NUM
+  for (let i = 1; i < NEAREST_BRICKS_NUM; i++) {
+    result = Provable.if<Collision>(
+      collisions[i].earlierThan(result),
+      Collision,
+      collisions[i],
+      result,
+    );
+  }
+
+  return result;
 };
 
 export function loadGameContext(bricks: Bricks, debug: Bool) {

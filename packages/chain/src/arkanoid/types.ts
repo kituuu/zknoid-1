@@ -162,11 +162,19 @@ export class Ball extends Struct({
   }
 
   checkBrickCollision(brick: Brick): Collision {
-    return new Collision({});
+    return new Collision({
+      time: UInt64.zero,
+    });
   }
 }
 
-export class Collision extends Struct({}) {}
+export class Collision extends Struct({
+  time: UInt64,
+}) {
+  earlierThan(c: Collision): Bool {
+    return this.time.lessThan(c.time);
+  }
+}
 
 export class Platform extends Struct({
   position: Int64,
