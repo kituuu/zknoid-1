@@ -45,8 +45,7 @@ import { CombinationProof } from './CombProof';
 import { Game } from 'src/examples/BiggerCard/BiggerCards';
 import { Lobby } from 'src/engine/LobbyManager';
 import { PokerMatchMaker } from './Lobby/PokerMatchMaking';
-
-const MAX_PLAYERS = 6;
+import { MAX_PLAYERS } from './consts';
 
 function forceOptionValue<T>(o: Option<T>): T {
   assert(o.isSome, 'forceOptionValue fail. Trying to access unitialized value');
@@ -530,7 +529,7 @@ export class Poker extends PokerMatchMaker {
   }
 
   private clearFolds(gameId: UInt64): void {
-    for (let i = 1; i < MAX_PLAYERS + 1; i++) {
+    for (let i = 0; i < MAX_PLAYERS; i++) {
       let key = new GameIndex({
         gameId,
         index: UInt64.from(i),

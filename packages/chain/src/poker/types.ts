@@ -11,6 +11,7 @@ import {
 } from 'o1js';
 import { Json } from 'o1js/dist/node/bindings/mina-transaction/gen/transaction';
 import { decryptOne } from '../engine/ElGamal';
+import { MAX_PLAYERS } from './consts';
 
 export const POKER_DECK_SIZE = 52;
 export const MIN_VALUE = 2;
@@ -18,7 +19,6 @@ export const MAX_VALUE = 15;
 export const MAX_COLOR = 4;
 
 export const LAST_ROUND = 4;
-export const MAX_PLAYERS = 2;
 
 export const INITAL_BALANCE = 100;
 

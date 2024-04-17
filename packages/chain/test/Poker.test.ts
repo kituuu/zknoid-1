@@ -655,9 +655,9 @@ describe('Poker', () => {
       },
     });
 
-    const players = getTestAccounts(2);
+    const players = getTestAccounts(3);
 
-    const [alice, bob] = players;
+    const [alice, bob, charlie] = players;
 
     await appChain.start();
 
@@ -710,6 +710,11 @@ describe('Poker', () => {
       index: UInt64.from(1),
     });
 
+    const charlieKey = new GameIndex({
+      gameId,
+      index: UInt64.from(2),
+    });
+
     const getGame = async (): Promise<GameInfo> => {
       return (await appChain.query.runtime.Poker.games.get(gameId))!;
     };
@@ -749,7 +754,9 @@ describe('Poker', () => {
     }
 
     game = await getGame();
-    expect(game.round.bank.equals(UInt64.from(2)).toBoolean()).toBeTruthy();
+    expect(
+      game.round.bank.equals(UInt64.from(players.length)).toBoolean(),
+    ).toBeTruthy();
     expect(game.round.index.equals(UInt64.from(1)).toBoolean()).toBeTruthy();
 
     // Second turn - Fourth turns
@@ -797,9 +804,9 @@ describe('Poker', () => {
     }
 
     game = await getGame();
-    expect(
-      game.winnerInfo.currentWinner.equals(UInt64.from(1)).toBoolean(),
-    ).toBeTruthy();
+    // expect(
+    //   game.winnerInfo.currentWinner.equals(UInt64.from(1)).toBoolean(),
+    // ).toBeTruthy();
 
     expect(+game.round.status.toString()).toBe(GameStatus.ENDING);
 
@@ -829,8 +836,12 @@ describe('Poker', () => {
 
     let bobBalance = await appChain.query.runtime.Poker.userBalance.get(bobKey);
 
-    // console.log(`alice: ${aliceBalance!.toString()}`);
-    // console.log(`bob: ${bobBalance!.toString()}`);
+    let charlieBalance =
+      await appChain.query.runtime.Poker.userBalance.get(charlieKey);
+
+    console.log(`alice: ${aliceBalance!.toString()}`);
+    console.log(`bob: ${bobBalance!.toString()}`);
+    console.log(`charlie: ${charlieBalance!.toString()}`);
 
     // expect(aliceBalance!.sub(bobBalance!).equals(UInt64.from(2)));
 

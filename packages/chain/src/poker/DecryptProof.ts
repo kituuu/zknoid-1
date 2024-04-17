@@ -9,6 +9,7 @@ import {
 } from 'o1js';
 import { EncryptedCard, EncryptedDeck, POKER_DECK_SIZE } from './types';
 import { decrypt, decryptOne } from '../engine/ElGamal';
+import { MAX_PLAYERS } from './consts';
 
 export class DecryptProofPublicInput extends Struct({
   m0: Group,
@@ -62,7 +63,7 @@ export const proveInitialOpen = (
   // decryptedValues[0] = decryptOne(pk, publicInput.deck.cards[0].value[0]);
   // decryptedValues[1] = decryptOne(pk, publicInput.deck.cards[1].value[0]);
 
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < MAX_PLAYERS; i++) {
     // #TODOChange to max players
     let curPos = UInt64.from(i);
 
