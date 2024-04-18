@@ -1,6 +1,6 @@
 import { PrivateKey, PublicKey } from 'o1js';
 
-interface IUser {
+export interface IUser {
   publicKey: PublicKey;
   privateKey: PrivateKey;
 }

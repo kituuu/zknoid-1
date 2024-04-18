@@ -21,11 +21,14 @@ import {
   shuffle,
 } from '../src/poker/ShuffleProof';
 import {
+  FoldProof,
+  FoldProofPublicInput,
   InitialOpen,
   InitialOpenProof,
   InitialOpenPublicInput,
   PublicOpenProof,
   PublicOpenPublicInput,
+  proveFold,
   proveInitialOpen,
   provePublicOpen,
 } from '../src/poker/DecryptProof';
@@ -559,6 +562,34 @@ const sendNextOpen = async (
   expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
 };
 
+const sendFold = async (
+  appChain: TestingAppChain<any, any, any, any>,
+  poker: Poker,
+  game: GameInfo,
+  senderPrivateKey: PrivateKey,
+  round: UInt64,
+) => {
+  appChain.setSigner(senderPrivateKey);
+  let sender = senderPrivateKey.toPublicKey();
+  let publicInput = new FoldProofPublicInput({
+    deck: game.deck,
+    round,
+  });
+  let publicOutput = proveFold(publicInput, senderPrivateKey);
+  let proof = await mockProof(publicOutput, FoldProof, publicInput);
+
+  {
+    const tx = await appChain.transaction(sender, () => {
+      poker.fold(game.meta.id, proof);
+    });
+    await tx.sign();
+    await tx.send();
+  }
+
+  let block = await appChain.produceBlock();
+  expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
+};
+
 interface ICombination {
   id: number;
   indexes: number[];
@@ -846,5 +877,109 @@ describe('Poker', () => {
     // expect(aliceBalance!.sub(bobBalance!).equals(UInt64.from(2)));
 
     // Wining
+  }, 1000000);
+
+  it('Two players, on folds', async () => {
+    const appChain = TestingAppChain.fromRuntime({
+      Poker,
+      Balances,
+    });
+
+    appChain.configurePartial({
+      Runtime: {
+        Poker: {},
+        Balances: {
+          totalSupply: UInt64.from(10000),
+        },
+      },
+    });
+
+    const players = getTestAccounts(2);
+
+    const [alice, bob] = players;
+
+    await appChain.start();
+
+    const poker = appChain.runtime.resolve('Poker');
+
+    console.log('Finding match');
+
+    const LobbyId = UInt64.from(1);
+
+    for (const player of players) {
+      appChain.setSigner(player.privateKey);
+      const tx1 = await appChain.transaction(player.publicKey, () => {
+        poker.joinLobby(LobbyId);
+      });
+      await tx1.sign();
+      await tx1.send();
+
+      let block = await appChain.produceBlock();
+      expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
+    }
+
+    appChain.setSigner(alice.privateKey);
+    const tx1 = await appChain.transaction(alice.publicKey, () => {
+      poker.startGame(LobbyId);
+    });
+
+    await tx1.sign();
+    await tx1.send();
+
+    await appChain.produceBlock();
+
+    const gameId = UInt64.from(1);
+
+    const getGame = async (): Promise<GameInfo> => {
+      return (await appChain.query.runtime.Poker.games.get(gameId))!;
+    };
+
+    let game = await getGame();
+
+    console.log('Setup');
+    for (const player of players) {
+      game = await getGame();
+      const permutation = PermutationMatrix.getZeroMatrix();
+
+      await sendShuffle(appChain, poker, game, permutation, player.privateKey);
+    }
+
+    console.log('First turn');
+    // Fist turn
+
+    for (const [index, player] of players.entries()) {
+      game = await getGame();
+      await sendInitialOpen(
+        appChain,
+        poker,
+        game,
+        player.privateKey,
+        UInt64.from(index),
+      );
+    }
+
+    game = await getGame();
+
+    // Alice folds
+    await sendFold(appChain, poker, game, alice.privateKey, game.round.index);
+
+    // Claim win
+    {
+      appChain.setSigner(bob.privateKey);
+      let tx = await appChain.transaction(bob.publicKey, () => {
+        poker.claimWin(gameId, UInt64.from(1));
+      });
+
+      await tx.sign();
+      await tx.send();
+
+      let block = await appChain.produceBlock();
+      expect(block?.transactions[0].status.toBoolean()).toBeTruthy();
+    }
+
+    game = await getGame();
+
+    expect(game.round.status.equals(UInt64.zero)).toBeTruthy();
+    expect(game.round.bank.equals(UInt64.zero)).toBeTruthy();
   }, 1000000);
 });

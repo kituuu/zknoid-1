@@ -416,7 +416,7 @@ export class Poker extends PokerMatchMaker {
     this.games.set(gameId, game);
   }
 
-  // @runtimeMethod()
+  @runtimeMethod()
   public fold(gameId: UInt64, foldProof: FoldProof) {
     let game = forceOptionValue(this.games.get(gameId));
 
@@ -436,7 +436,7 @@ export class Poker extends PokerMatchMaker {
 
     for (let i = 0; i < POKER_DECK_SIZE; i++) {
       let prevNumOfEncryption = game.deck.cards[i].numOfEncryption;
-      // Workaround protokit simulation with no state
+      // Workaround protokit simgamesulation with no state
       let subValue = Provable.if(
         prevNumOfEncryption
           .greaterThan(UInt64.zero)
@@ -456,6 +456,10 @@ export class Poker extends PokerMatchMaker {
       index: game.round.curPlayerIndex,
     });
 
+    // Provable.asProver(() => {
+    //   if (game.meta.maxPlayers.greaterThan(UInt64.zero))
+    // })
+
     this.isFold.set(userIndex, Bool(true));
     game.round.foldsAmount = game.round.foldsAmount.add(1);
 
@@ -463,6 +467,8 @@ export class Poker extends PokerMatchMaker {
 
     // Update phaze if needed
     game.checkAndTransistToReveal(this.userBid, this.network.block.height);
+
+    this.games.set(gameId, game);
   }
 
   @runtimeMethod()
@@ -471,12 +477,20 @@ export class Poker extends PokerMatchMaker {
     let game = forceOptionValue(this.games.get(gameId));
 
     // All others folded
-    assert(game.round.foldsAmount.equals(game.meta.maxPlayers.sub(1)));
+    let subValue = Provable.if(
+      game.meta.maxPlayers.greaterThan(UInt64.zero),
+      UInt64.from(1),
+      UInt64.from(0),
+    );
+
+    assert(game.round.foldsAmount.equals(game.meta.maxPlayers.sub(subValue)));
+
     const playerKey = new GameIndex({
       gameId,
       index: playerIndex,
     });
     const isPlayerFolded = this.isFold.get(playerKey).value;
+
     assert(isPlayerFolded.not(), 'Cant claim win for folded user');
 
     this.startNewRound(game, playerIndex);

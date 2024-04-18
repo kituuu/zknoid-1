@@ -178,7 +178,7 @@ Upon fold you should open all card, that should be open. Unless other players wo
 to find out their values.
 */
 
-// #TODO refactor. Not its 90% copy. Reduce duplication
+// #TODO refactor. Now its 90% copy. Reduce duplication
 
 export class FoldIndexes extends Struct({
   values: Provable.Array(Int64, 5),
