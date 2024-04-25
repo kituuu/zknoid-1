@@ -180,6 +180,19 @@ const rectCheck = (
   return xCond.and(yCond);
 };
 
+const circleCheck = (
+  point: IntPoint,
+  secondPoint: IntPoint,
+  radius: UInt64,
+): Bool => {
+  const xDist = point.x.sub(secondPoint.x);
+  const yDist = point.y.sub(secondPoint.y);
+
+  const dist2 = xDist.mul(xDist).add(yDist.mul(yDist));
+
+  return dist2.magnitude.lessThan(radius.mul(radius));
+};
+
 export class Ball extends Struct({
   position: IntPoint,
   speed: IntPoint,
@@ -205,6 +218,7 @@ export class Ball extends Struct({
   }
 
   checkBrickCollision(prevBallPos: IntPoint, brick: Brick): Collision {
+    const isAlive = brick.value.greaterThan(UInt64.from(1));
     let time = UInt64.from(10000000);
     let speedModifier = IntPoint.from(1, 1);
     let position = this.position;
@@ -304,6 +318,8 @@ export class Ball extends Struct({
 
     position.x = prevBallPos.x.add(this.speed.x.mul(time).div(PRECISION));
     position.y = prevBallPos.y.add(this.speed.y.mul(time).div(PRECISION));
+
+    time = Provable.if(isAlive, time, UInt64.from(100000));
 
     return new Collision({
       time,

@@ -10,7 +10,7 @@ export const BRICK_HALF_WIDTH = 25;
 export const FIELD_PIXEL_WIDTH = 720;
 export const FIELD_PIXEL_HEIGHT = 720;
 export const PLATFORM_HALF_WIDTH = 50;
-export const PLATFORM_WIDTH = 200;
+export const PLATFORM_WIDTH = 150;
 
 export const FIELD_WIDTH = FIELD_PIXEL_WIDTH;
 export const FIELD_HEIGHT = FIELD_PIXEL_HEIGHT;
@@ -33,14 +33,16 @@ export const DEFAULT_BALL_SPEED_Y = -Math.floor(BALL_RADIUS);
 
 export const DEFAULT_PLATFORM_X = FIELD_WIDTH / 2;
 
-export const DEFAULT_PLATFORM_SPEED = PLATFORM_WIDTH / 10;
+export const DEFAULT_PLATFORM_SPEED = PLATFORM_WIDTH / 2;
 export const ACCELERATION_TIME = 1;
 export const ACCELERATION = Math.floor(
   DEFAULT_PLATFORM_SPEED / ACCELERATION_TIME,
 );
 
 // export const TICK_PERIOD = Math.floor(PRECISION / DESIRED_SPEED);
-export const TICK_PERIOD = 16 * 5;
+export const TICK_PERIOD = Math.floor(3 * 16.6);
+
+export const TICK_PER_SECOND = Math.floor(PRECISION / TICK_PERIOD);
 
 export const SEED_MULTIPLIER = 5837482;
 
