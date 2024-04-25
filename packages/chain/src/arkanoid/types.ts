@@ -266,7 +266,7 @@ export class Ball extends Struct({
     );
 
     const rightRectPoint = brick.pos.add(
-      IntPoint.from(2 * BRICK_HALF_WIDTH + BALL_RADIUS, 0),
+      IntPoint.from(2 * BRICK_HALF_WIDTH, 0),
     );
 
     const rightCheck = rectCheck(

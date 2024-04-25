@@ -10,7 +10,7 @@ export const BRICK_HALF_WIDTH = 25;
 export const FIELD_PIXEL_WIDTH = 720;
 export const FIELD_PIXEL_HEIGHT = 720;
 export const PLATFORM_HALF_WIDTH = 50;
-export const PLATFORM_WIDTH = 100;
+export const PLATFORM_WIDTH = 200;
 
 export const FIELD_WIDTH = FIELD_PIXEL_WIDTH;
 export const FIELD_HEIGHT = FIELD_PIXEL_HEIGHT;
@@ -28,12 +28,12 @@ export const DEFAULT_BALL_LOCATION_Y = 250;
 
 export const DESIRED_SPEED = 10;
 
-export const DEFAULT_BALL_SPEED_X = Math.floor(BALL_RADIUS / 5);
-export const DEFAULT_BALL_SPEED_Y = -Math.floor(BALL_RADIUS / 6);
+export const DEFAULT_BALL_SPEED_X = Math.floor(BALL_RADIUS) - 1;
+export const DEFAULT_BALL_SPEED_Y = -Math.floor(BALL_RADIUS);
 
 export const DEFAULT_PLATFORM_X = FIELD_WIDTH / 2;
 
-export const DEFAULT_PLATFORM_SPEED = PLATFORM_WIDTH;
+export const DEFAULT_PLATFORM_SPEED = PLATFORM_WIDTH / 10;
 export const ACCELERATION_TIME = 1;
 export const ACCELERATION = Math.floor(
   DEFAULT_PLATFORM_SPEED / ACCELERATION_TIME,
