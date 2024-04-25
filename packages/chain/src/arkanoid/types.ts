@@ -9,6 +9,7 @@ import {
   Field,
 } from 'o1js';
 import {
+  BALL_RADIUS,
   BRICK_HALF_WIDTH,
   CHUNK_LENGTH,
   GAME_LENGTH,
@@ -122,6 +123,13 @@ export class IntPoint extends Struct({
       y: this.y.mul(p.y),
     });
   }
+
+  add(p: IntPoint): IntPoint {
+    return new IntPoint({
+      x: this.x.add(p.x),
+      y: this.y.add(p.y),
+    });
+  }
 }
 
 export class Brick extends Struct({
@@ -161,6 +169,17 @@ export class Bricks extends Struct({
   }
 }
 
+const rectCheck = (
+  point: IntPoint,
+  topLeft: IntPoint,
+  width: UInt64,
+  height: UInt64,
+): Bool => {
+  const xCond = inRange(point.x, topLeft.x, topLeft.x.add(width));
+  const yCond = inRange(point.y, topLeft.y, topLeft.y.add(height));
+  return xCond.and(yCond);
+};
+
 export class Ball extends Struct({
   position: IntPoint,
   speed: IntPoint,
@@ -186,176 +205,104 @@ export class Ball extends Struct({
   }
 
   checkBrickCollision(prevBallPos: IntPoint, brick: Brick): Collision {
-    const a = this.speed.x;
-    const b = this.speed.y;
-    const c = a.mul(this.position.y).sub(b.mul(this.position.x));
-
-    const isAlive = brick.value.greaterThan(UInt64.from(1)); // 1 just so UInt64.sub do not underflow
-
-    const leftBorder = brick.pos.x;
-    const rightBorder = brick.pos.x.add(BRICK_HALF_WIDTH * 2);
-    const topBorder = brick.pos.y.add(BRICK_HALF_WIDTH * 2);
-    const bottomBorder = brick.pos.y;
-
-    /*
-            Collision
-                ball.pos.x \inc [leftBorder, rightBorder]
-                ball.pos.y \inc [bottomBorder, topBorder]
-
-            */
-
-    const hasRightPass = inRange(rightBorder, prevBallPos.x, this.position.x);
-    const hasLeftPass = inRange(leftBorder, prevBallPos.x, this.position.x);
-    const hasTopPass = inRange(topBorder, prevBallPos.y, this.position.y);
-    const hasBottomPass = inRange(bottomBorder, prevBallPos.y, this.position.y);
-
-    /*
-                Detect where collision ocured
-                /////////////// horizontal part of a brick //////////////////////////
-                y = d
-                ay = bx + c;
-                c = ay1 - bx1
-                    a - ball.speed.x
-                    b - ball.speed.y
-                bx = ay - c
-                bx = ad - c;
-
-                x \incl [ brick.pos.x, brick.pos.x + 2 * BRICK_HALF_WIDTH ]
-                bx \incl [b(brics.pos.x, b(brick.pos.x + 2 * BRICK_HALF_WIDTH))]
-                ad - c \incl [b(brics.pos.x), b(brick.pos.x + 2 * BRICK_HALF_WIDTH))]
-                
-
-
-                /////////////// vertical part of a brick ////////////////////////////
-                x = d
-                ay = bx + c
-                c = ay1 - bx1
-                    a - ball.speed.x
-                    b - ball.speed.y
-                ay = bd + c
-
-                y \incl [ brick.pos.y, brick.pos.y + 2 * BRICK_HALF_WIDTH]
-                ay \incl [ a(brick.pos.y), a(brick.pos.y + 2 * BRICK_HALF_WIDTH)]
-                bd + c \incl [ a(brick.pos.y), a(brick.pos.y + 2 * BRICK_HALF_WIDTH)]
-            */
-
-    const moveRight = this.speed.x.isPositive();
-    const moveTop = this.speed.y.isPositive();
-
-    const leftEnd = b.mul(brick.pos.x);
-    const rightEnd = b.mul(brick.pos.x.add(2 * BRICK_HALF_WIDTH));
-
-    // Top horizontal
-    const d1 = topBorder;
-    const adc1 = a.mul(d1).sub(c);
-    const crossBrickTop = inRange(adc1, leftEnd, rightEnd);
-    let hasTopBump = crossBrickTop.and(hasTopPass);
-
-    // Bottom horisontal
-    const d2 = bottomBorder;
-    const adc2 = a.mul(d2).sub(c);
-    const crossBrickBottom = inRange(adc2, leftEnd, rightEnd);
-    let hasBottomBump = crossBrickBottom.and(hasBottomPass);
-
-    const topEnd = a.mul(brick.pos.y.add(2 * BRICK_HALF_WIDTH));
-    const bottomEnd = a.mul(brick.pos.y);
-
-    // Left vertical
-    const d3 = leftBorder;
-    const bdc1 = b.mul(d3).add(c);
-    const crossBrickLeft = inRange(bdc1, bottomEnd, topEnd);
-    let hasLeftBump = crossBrickLeft.and(hasLeftPass);
-
-    // Right vertical
-    const d4 = rightBorder;
-    const bdc2 = b.mul(d4).add(c);
-    const crossBrickRight = inRange(bdc2, bottomEnd, topEnd);
-    let hasRightBump = crossBrickRight.and(hasRightPass);
-
-    /// Exclude double collision
-    hasRightBump = Provable.if(
-      moveRight,
-      hasRightBump.and(hasTopBump.not()).and(hasBottomBump.not()),
-      hasRightBump,
-    );
-    hasLeftBump = Provable.if(
-      moveRight,
-      hasLeftBump,
-      hasLeftBump.and(hasTopBump.not()).and(hasBottomBump.not()),
-    );
-    hasTopBump = Provable.if(
-      moveTop,
-      hasTopBump.and(hasRightBump.not()).and(hasLeftBump.not()),
-      hasTopBump,
-    );
-    hasBottomBump = Provable.if(
-      moveTop,
-      hasBottomBump,
-      hasBottomBump.and(hasRightBump.not()).and(hasLeftBump.not()),
-    );
-
-    const collisionHappen = isAlive.and(
-      hasRightBump.or(hasLeftBump).or(hasTopBump).or(hasBottomBump),
-    );
-
+    console.log('New Check Brick Collision');
+    let time = UInt64.from(10000000);
     let speedModifier = IntPoint.from(1, 1);
+    let position = this.position;
+
+    const topRectPoint = brick.pos.add(IntPoint.from(0, -BALL_RADIUS));
+
+    // Check side collision
+    const topCheck = rectCheck(
+      this.position,
+      topRectPoint,
+      UInt64.from(2 * BRICK_HALF_WIDTH),
+      UInt64.from(BALL_RADIUS),
+    );
+
+    const topYBeforeCollision = topRectPoint.y.sub(prevBallPos.y);
+
+    time = Provable.if(
+      topCheck,
+      topYBeforeCollision.mul(PRECISION).div(this.speed.y).magnitude,
+      time,
+    );
+
+    const bottomRectPoint = brick.pos.add(
+      IntPoint.from(0, 2 * BRICK_HALF_WIDTH),
+    );
+
+    const bottomCheck = rectCheck(
+      this.position,
+      bottomRectPoint,
+      UInt64.from(2 * BRICK_HALF_WIDTH),
+      UInt64.from(BALL_RADIUS),
+    );
+
+    const bottomYBeforeCollision = prevBallPos.y.sub(
+      bottomRectPoint.y.add(BALL_RADIUS),
+    );
+
+    time = Provable.if(
+      bottomCheck,
+      bottomYBeforeCollision.mul(PRECISION).div(this.speed.y).magnitude,
+      time,
+    );
+
+    const leftRectPoint = brick.pos.add(IntPoint.from(-BALL_RADIUS, 0));
+
+    const leftCheck = rectCheck(
+      this.position,
+      leftRectPoint,
+      UInt64.from(BALL_RADIUS),
+      UInt64.from(2 * BRICK_HALF_WIDTH),
+    );
+
+    const leftXBeforeCollision = leftRectPoint.x.sub(prevBallPos.x);
+
+    time = Provable.if(
+      leftCheck,
+      leftXBeforeCollision.mul(PRECISION).div(this.speed.x).magnitude,
+      time,
+    );
+
+    const rightRectPoint = brick.pos.add(
+      IntPoint.from(2 * BRICK_HALF_WIDTH + BALL_RADIUS, 0),
+    );
+
+    const rightCheck = rectCheck(
+      this.position,
+      rightRectPoint,
+      UInt64.from(BALL_RADIUS),
+      UInt64.from(2 * BRICK_HALF_WIDTH),
+    );
+
+    const rightXBeforeCollision = prevBallPos.x.sub(
+      rightRectPoint.x.add(BALL_RADIUS),
+    );
+
+    time = Provable.if(
+      rightCheck,
+      rightXBeforeCollision.mul(PRECISION).div(this.speed.x).magnitude,
+      time,
+    );
+
     speedModifier.x = Provable.if(
-      hasRightBump.or(hasLeftBump),
+      leftCheck.or(rightCheck),
       Int64.from(-1),
       Int64.from(1),
     );
     speedModifier.y = Provable.if(
-      hasTopBump.or(hasBottomBump),
+      topCheck.or(bottomCheck),
       Int64.from(-1),
       Int64.from(1),
     );
 
-    let time = UInt64.from(PRECISION * 1000);
+    position = new IntPoint({
+      x: prevBallPos.x,
+      y: prevBallPos.y,
+    });
 
-    time = Provable.if(
-      hasLeftBump,
-      leftBorder
-        .sub(prevBallPos.x)
-        .magnitude.mul(PRECISION)
-        .div(this.speed.x.magnitude),
-      time,
-    );
-    time = Provable.if(
-      hasRightBump,
-      prevBallPos.x
-        .sub(rightBorder)
-        .magnitude.mul(PRECISION)
-        .div(this.speed.x.magnitude),
-      time,
-    );
-    time = Provable.if(
-      hasTopBump,
-      prevBallPos.y
-        .sub(topBorder)
-        .magnitude.mul(PRECISION)
-        .div(this.speed.y.magnitude),
-      time,
-    );
-    time = Provable.if(
-      hasBottomBump,
-      bottomBorder
-        .sub(prevBallPos.y)
-        .magnitude.mul(PRECISION)
-        .div(this.speed.y.magnitude),
-      time,
-    );
-
-    // If brick is destroyed - set collision time to insinite
-    time = Provable.if(isAlive, time, UInt64.from(PRECISION * 1000));
-
-    // Do not account collisions in zero time
-    time = Provable.if(
-      time.equals(UInt64.zero),
-      UInt64.from(PRECISION * 1000),
-      time,
-    );
-
-    let position = IntPoint.from(0, 0);
     position.x = prevBallPos.x.add(this.speed.x.mul(time).div(PRECISION));
     position.y = prevBallPos.y.add(this.speed.y.mul(time).div(PRECISION));
 
@@ -366,67 +313,210 @@ export class Ball extends Struct({
       speedModifier,
     });
 
+    // Check corner collision
+    // Check inner collision (optional)
+    // Old collision with one point(ball with no radius)
+    // const a = this.speed.x;
+    // const b = this.speed.y;
+    // const c = a.mul(this.position.y).sub(b.mul(this.position.x));
+    // const isAlive = brick.value.greaterThan(UInt64.from(1)); // 1 just so UInt64.sub do not underflow
+    // const leftBorder = brick.pos.x;
+    // const rightBorder = brick.pos.x.add(BRICK_HALF_WIDTH * 2);
+    // const topBorder = brick.pos.y.add(BRICK_HALF_WIDTH * 2);
+    // const bottomBorder = brick.pos.y;
+    // /*
+    //         Collision
+    //             ball.pos.x \inc [leftBorder, rightBorder]
+    //             ball.pos.y \inc [bottomBorder, topBorder]
+    //         */
+    // const hasRightPass = inRange(rightBorder, prevBallPos.x, this.position.x);
+    // const hasLeftPass = inRange(leftBorder, prevBallPos.x, this.position.x);
+    // const hasTopPass = inRange(topBorder, prevBallPos.y, this.position.y);
+    // const hasBottomPass = inRange(bottomBorder, prevBallPos.y, this.position.y);
+    // /*
+    //             Detect where collision ocured
+    //             /////////////// horizontal part of a brick //////////////////////////
+    //             y = d
+    //             ay = bx + c;
+    //             c = ay1 - bx1
+    //                 a - ball.speed.x
+    //                 b - ball.speed.y
+    //             bx = ay - c
+    //             bx = ad - c;
+    //             x \incl [ brick.pos.x, brick.pos.x + 2 * BRICK_HALF_WIDTH ]
+    //             bx \incl [b(brics.pos.x, b(brick.pos.x + 2 * BRICK_HALF_WIDTH))]
+    //             ad - c \incl [b(brics.pos.x), b(brick.pos.x + 2 * BRICK_HALF_WIDTH))]
+    //             /////////////// vertical part of a brick ////////////////////////////
+    //             x = d
+    //             ay = bx + c
+    //             c = ay1 - bx1
+    //                 a - ball.speed.x
+    //                 b - ball.speed.y
+    //             ay = bd + c
+    //             y \incl [ brick.pos.y, brick.pos.y + 2 * BRICK_HALF_WIDTH]
+    //             ay \incl [ a(brick.pos.y), a(brick.pos.y + 2 * BRICK_HALF_WIDTH)]
+    //             bd + c \incl [ a(brick.pos.y), a(brick.pos.y + 2 * BRICK_HALF_WIDTH)]
+    //         */
+    // const moveRight = this.speed.x.isPositive();
+    // const moveTop = this.speed.y.isPositive();
+    // const leftEnd = b.mul(brick.pos.x);
+    // const rightEnd = b.mul(brick.pos.x.add(2 * BRICK_HALF_WIDTH));
+    // // Top horizontal
+    // const d1 = topBorder;
+    // const adc1 = a.mul(d1).sub(c);
+    // const crossBrickTop = inRange(adc1, leftEnd, rightEnd);
+    // let hasTopBump = crossBrickTop.and(hasTopPass);
+    // // Bottom horisontal
+    // const d2 = bottomBorder;
+    // const adc2 = a.mul(d2).sub(c);
+    // const crossBrickBottom = inRange(adc2, leftEnd, rightEnd);
+    // let hasBottomBump = crossBrickBottom.and(hasBottomPass);
+    // const topEnd = a.mul(brick.pos.y.add(2 * BRICK_HALF_WIDTH));
+    // const bottomEnd = a.mul(brick.pos.y);
+    // // Left vertical
+    // const d3 = leftBorder;
+    // const bdc1 = b.mul(d3).add(c);
+    // const crossBrickLeft = inRange(bdc1, bottomEnd, topEnd);
+    // let hasLeftBump = crossBrickLeft.and(hasLeftPass);
+    // // Right vertical
+    // const d4 = rightBorder;
+    // const bdc2 = b.mul(d4).add(c);
+    // const crossBrickRight = inRange(bdc2, bottomEnd, topEnd);
+    // let hasRightBump = crossBrickRight.and(hasRightPass);
+    // /// Exclude double collision
+    // hasRightBump = Provable.if(
+    //   moveRight,
+    //   hasRightBump.and(hasTopBump.not()).and(hasBottomBump.not()),
+    //   hasRightBump,
+    // );
+    // hasLeftBump = Provable.if(
+    //   moveRight,
+    //   hasLeftBump,
+    //   hasLeftBump.and(hasTopBump.not()).and(hasBottomBump.not()),
+    // );
+    // hasTopBump = Provable.if(
+    //   moveTop,
+    //   hasTopBump.and(hasRightBump.not()).and(hasLeftBump.not()),
+    //   hasTopBump,
+    // );
+    // hasBottomBump = Provable.if(
+    //   moveTop,
+    //   hasBottomBump,
+    //   hasBottomBump.and(hasRightBump.not()).and(hasLeftBump.not()),
+    // );
+    // const collisionHappen = isAlive.and(
+    //   hasRightBump.or(hasLeftBump).or(hasTopBump).or(hasBottomBump),
+    // );
+    // let speedModifier = IntPoint.from(1, 1);
+    // speedModifier.x = Provable.if(
+    //   hasRightBump.or(hasLeftBump),
+    //   Int64.from(-1),
+    //   Int64.from(1),
+    // );
+    // speedModifier.y = Provable.if(
+    //   hasTopBump.or(hasBottomBump),
+    //   Int64.from(-1),
+    //   Int64.from(1),
+    // );
+    // let time = UInt64.from(PRECISION * 1000);
+    // time = Provable.if(
+    //   hasLeftBump,
+    //   leftBorder
+    //     .sub(prevBallPos.x)
+    //     .magnitude.mul(PRECISION)
+    //     .div(this.speed.x.magnitude),
+    //   time,
+    // );
+    // time = Provable.if(
+    //   hasRightBump,
+    //   prevBallPos.x
+    //     .sub(rightBorder)
+    //     .magnitude.mul(PRECISION)
+    //     .div(this.speed.x.magnitude),
+    //   time,
+    // );
+    // time = Provable.if(
+    //   hasTopBump,
+    //   prevBallPos.y
+    //     .sub(topBorder)
+    //     .magnitude.mul(PRECISION)
+    //     .div(this.speed.y.magnitude),
+    //   time,
+    // );
+    // time = Provable.if(
+    //   hasBottomBump,
+    //   bottomBorder
+    //     .sub(prevBallPos.y)
+    //     .magnitude.mul(PRECISION)
+    //     .div(this.speed.y.magnitude),
+    //   time,
+    // );
+    // // If brick is destroyed - set collision time to insinite
+    // time = Provable.if(isAlive, time, UInt64.from(PRECISION * 1000));
+    // // Do not account collisions in zero time
+    // time = Provable.if(
+    //   time.equals(UInt64.zero),
+    //   UInt64.from(PRECISION * 1000),
+    //   time,
+    // );
+    // let position = IntPoint.from(0, 0);
+    // position.x = prevBallPos.x.add(this.speed.x.mul(time).div(PRECISION));
+    // position.y = prevBallPos.y.add(this.speed.y.mul(time).div(PRECISION));
+    // return new Collision({
+    //   time,
+    //   target: brick,
+    //   position,
+    //   speedModifier,
+    // });
     // Reduce health if coliision happend and brick is not dead
-
     //   const newBrickValue = Provable.if(
     //     collisionHappen,
     //     currentBrick.value.sub(1),
     //     currentBrick.value,
     //   );
-
     //   this.updateBrick(currentBrick.pos, newBrickValue);
-
     //   this.totalLeft = Provable.if(
     //     collisionHappen,
     //     this.totalLeft.sub(1),
     //     this.totalLeft,
     //   );
-
     //   this.alreadyWon = Provable.if(
     //     this.totalLeft.equals(UInt64.from(1)).and(this.winable),
     //     Bool(true),
     //     this.alreadyWon,
     //   );
-
     //   this.ball.speed.x = Provable.if(
     //     collisionHappen.and(hasLeftBump.or(hasRightBump)),
     //     this.ball.speed.x.neg(),
     //     this.ball.speed.x,
     //   );
-
     //   /*
     //             dx = x - leftBorder
     //             newX = leftBorder - (x - leftBorder) = 2leftBorder - x
-
     //             dx = rightBorder - x
     //             nexX = rightBorder + (rightBorder - x) = 2 rightBorder - x
     //         */
-
     //   // Update position on bump
     //   this.ball.position.x = Provable.if(
     //     collisionHappen.and(hasLeftBump),
     //     leftBorder.mul(2).sub(this.ball.position.x),
     //     this.ball.position.x,
     //   );
-
     //   this.ball.position.x = Provable.if(
     //     collisionHappen.and(hasRightBump),
     //     rightBorder.mul(2).sub(this.ball.position.x),
     //     this.ball.position.x,
     //   );
-
     //   this.ball.speed.y = Provable.if(
     //     collisionHappen.and(hasBottomBump.or(hasTopBump)),
     //     this.ball.speed.y.neg(),
     //     this.ball.speed.y,
     //   );
-
     //   this.ball.position.y = Provable.if(
     //     collisionHappen.and(hasTopBump),
     //     topBorder.mul(2).sub(this.ball.position.y),
     //     this.ball.position.y,
     //   );
-
     //   this.ball.position.y = Provable.if(
     //     collisionHappen.and(hasBottomBump),
     //     bottomBorder.mul(2).sub(this.ball.position.y),

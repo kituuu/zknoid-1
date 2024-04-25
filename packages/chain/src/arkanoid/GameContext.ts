@@ -10,6 +10,7 @@ import {
 } from 'o1js';
 import { RandomGenerator } from '../engine';
 import {
+  BALL_RADIUS,
   BRICK_HALF_WIDTH,
   COLLISION_FINDING_ITERATIONS,
   DEFAULT_BALL_LOCATION_X,
@@ -113,12 +114,14 @@ export class GameContext extends Struct({
 
     /// 4) Check for edge bumps
 
-    const leftBump = this.ball.position.x.isPositive().not();
-    const rightBump = this.ball.position.x.sub(FIELD_PIXEL_WIDTH).isPositive();
-    const bottomBump = this.ball.position.y
-      .sub(FIELD_PIXEL_HEIGHT)
+    const leftBump = this.ball.position.x.sub(BALL_RADIUS).isPositive().not();
+    const rightBump = this.ball.position.x
+      .sub(FIELD_PIXEL_WIDTH - BALL_RADIUS)
       .isPositive();
-    const topBump = this.ball.position.y.isPositive().not();
+    const bottomBump = this.ball.position.y
+      .sub(FIELD_PIXEL_HEIGHT - BALL_RADIUS)
+      .isPositive();
+    const topBump = this.ball.position.y.sub(BALL_RADIUS).isPositive().not();
 
     /// Add come constrains just in case
 
@@ -126,20 +129,20 @@ export class GameContext extends Struct({
     curTime = curTime.add(
       Provable.if(
         leftBump,
-        prevBallPos.x.mul(PRECISION).div(this.ball.speed.x),
+        prevBallPos.x.sub(BALL_RADIUS).mul(PRECISION).div(this.ball.speed.x),
         Int64.zero,
       ).magnitude,
     );
     this.ball.position.x = Provable.if(
       leftBump,
-      this.ball.position.x.neg(),
+      this.ball.position.x.sub(BALL_RADIUS).neg(),
       this.ball.position.x,
     );
 
     curTime = curTime.add(
       Provable.if(
         rightBump,
-        Int64.from(FIELD_PIXEL_WIDTH)
+        Int64.from(FIELD_PIXEL_WIDTH - BALL_RADIUS)
           .sub(prevBallPos.x)
           .mul(PRECISION)
           .div(this.ball.speed.x),
@@ -148,7 +151,9 @@ export class GameContext extends Struct({
     );
     this.ball.position.x = Provable.if(
       rightBump,
-      Int64.from(2 * FIELD_PIXEL_WIDTH).sub(this.ball.position.x),
+      Int64.from(2 * (FIELD_PIXEL_WIDTH - BALL_RADIUS)).sub(
+        this.ball.position.x,
+      ),
       this.ball.position.x,
     );
 
@@ -184,7 +189,10 @@ export class GameContext extends Struct({
     const a = this.ball.speed.x;
     const b = this.ball.speed.y;
 
-    const c = a.mul(this.ball.position.y).sub(b.mul(this.ball.position.x));
+    // Check for bottom ball point
+    const c = a
+      .mul(this.ball.position.y.add(BALL_RADIUS))
+      .sub(b.mul(this.ball.position.x));
 
     const platformLeftEndExtended = Provable.if(
       movedLeft,
@@ -210,7 +218,7 @@ export class GameContext extends Struct({
     curTime = curTime.add(
       Provable.if(
         bottomBump,
-        Int64.from(FIELD_PIXEL_HEIGHT)
+        Int64.from(FIELD_PIXEL_HEIGHT - BALL_RADIUS)
           .sub(prevBallPos.y)
           .mul(PRECISION)
           .div(prevBallSpeed.y),
@@ -219,20 +227,22 @@ export class GameContext extends Struct({
     );
     this.ball.position.y = Provable.if(
       bottomBump,
-      Int64.from(2 * FIELD_PIXEL_HEIGHT).sub(this.ball.position.y),
+      Int64.from(2 * (FIELD_PIXEL_HEIGHT - BALL_RADIUS)).sub(
+        this.ball.position.y,
+      ),
       this.ball.position.y,
     );
 
     curTime = curTime.add(
       Provable.if(
         bottomBump,
-        prevBallPos.y.mul(PRECISION).div(prevBallSpeed.y),
+        prevBallPos.y.sub(BALL_RADIUS).mul(PRECISION).div(prevBallSpeed.y),
         Int64.zero,
       ).magnitude,
     );
     this.ball.position.y = Provable.if(
       topBump,
-      this.ball.position.y.neg(),
+      this.ball.position.y.sub(BALL_RADIUS).neg(),
       this.ball.position.y,
     );
 
