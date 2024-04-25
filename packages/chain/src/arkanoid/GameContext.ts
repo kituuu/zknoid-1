@@ -174,7 +174,9 @@ export class GameContext extends Struct({
 
     this.ball.speed.x = Provable.if(
       bottomBump,
-      this.ball.speed.x.add(tick.momentum),
+      this.ball.speed.x.add(
+        tick.momentum.mul(BALL_RADIUS).div(DEFAULT_PLATFORM_SPEED),
+      ),
       this.ball.speed.x,
     );
 

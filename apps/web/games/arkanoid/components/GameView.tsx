@@ -179,6 +179,11 @@ export const GameView = (props: IGameViewProps) => {
   };
 
   const moveBall = (elapsed: number) => {
+    console.log('ball.dx: ', ball.dx);
+    console.log('elapsed: ', elapsed);
+    console.log('Tick_PERIOD: ', TICK_PERIOD);
+    console.log(`Total dx:`, (ball.dx * elapsed) / TICK_PERIOD);
+
     ball.x += (ball.dx * elapsed) / TICK_PERIOD;
     ball.y += (ball.dy * elapsed) / TICK_PERIOD;
 
@@ -742,7 +747,7 @@ export const GameView = (props: IGameViewProps) => {
       onLost();
     }
 
-    sync();
+    // sync();
   };
 
   return (
