@@ -21,6 +21,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { Int64, UInt64, Bool } from 'o1js';
 import { Ball, Cart, IBrick } from '@/lib/types';
+import { BALL_RADIUS } from 'zknoid-chain-dev/dist/src/arkanoid/constants';
 
 export interface ITick {
   action: number;
@@ -494,7 +495,7 @@ export const GameView = (props: IGameViewProps) => {
       y: DEFAULT_BALL_LOCATION_Y,
       dx: DEFAULT_BALL_SPEED_X,
       dy: DEFAULT_BALL_SPEED_Y,
-      radius: 3,
+      radius: BALL_RADIUS,
     };
 
     console.log(ball);
@@ -566,7 +567,7 @@ export const GameView = (props: IGameViewProps) => {
       y: gameContext.ball.position.y * 1,
       dx: 0,
       dy: 0,
-      radius: 3,
+      radius: BALL_RADIUS,
     };
 
     contractCart = {

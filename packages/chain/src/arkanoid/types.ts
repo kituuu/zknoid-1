@@ -205,7 +205,6 @@ export class Ball extends Struct({
   }
 
   checkBrickCollision(prevBallPos: IntPoint, brick: Brick): Collision {
-    console.log('New Check Brick Collision');
     let time = UInt64.from(10000000);
     let speedModifier = IntPoint.from(1, 1);
     let position = this.position;
