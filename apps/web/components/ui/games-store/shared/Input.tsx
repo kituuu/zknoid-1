@@ -1,10 +1,14 @@
 import { clsx } from 'clsx';
-import { HTMLInputTypeAttribute, ReactNode, useState } from 'react';
+import {
+  ChangeEvent,
+  HTMLInputTypeAttribute,
+  ReactNode,
+  useState,
+} from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useField } from 'formik';
 
 export const Input = ({
-  value,
-  setValue,
   placeholder,
   startContent,
   endContent,
@@ -13,16 +17,14 @@ export const Input = ({
   inputMode = 'text',
   isBordered = true,
   isReadonly = false,
-  isInvalid = false,
   invalidMessage = 'Error',
   isRequired,
   title,
   titleColor = 'left-accent',
-  emptyFieldCheck = true,
   onInvalid,
+  ...props
 }: {
-  value: any;
-  setValue?: (value: any) => void;
+  name: string;
   placeholder?: string;
   startContent?: ReactNode;
   endContent?: ReactNode;
@@ -40,22 +42,13 @@ export const Input = ({
     | undefined;
   isBordered?: boolean;
   isReadonly?: boolean;
-  isInvalid?: boolean;
   invalidMessage?: string;
   isRequired?: boolean;
   title?: string;
   titleColor?: 'left-accent' | 'foreground';
-  emptyFieldCheck?: boolean;
   onInvalid?: () => void;
 }) => {
-  const [isTouched, setIsTouched] = useState<boolean>(false);
-
-  if (emptyFieldCheck && !isInvalid)
-    if (isRequired && isTouched)
-      if (!value) {
-        isInvalid = true;
-        invalidMessage = 'Please fill out this field';
-      }
+  const [field, meta] = useField(props);
 
   return (
     <div className={'flex flex-col gap-2'}>
@@ -76,13 +69,14 @@ export const Input = ({
           'group flex flex-row gap-2 rounded-[5px] bg-bg-dark p-2',
           {
             border: isBordered,
-            'hover:border-left-accent': isBordered && !isReadonly && !isInvalid,
-            'border-[#FF0000] hover:border-[#FF00009C]': isInvalid,
+            'hover:border-left-accent': isBordered && !isReadonly && !meta.error,
+            'border-[#FF0000] hover:border-[#FF00009C]': !!meta.error,
           }
         )}
       >
         {startContent}
         <input
+          {...field} {...props}
           type={type}
           inputMode={inputMode}
           placeholder={placeholder}
@@ -94,31 +88,19 @@ export const Input = ({
               'cursor-default': isReadonly,
             }
           )}
-          value={value}
-          onChange={(event) => {
-            setValue &&
-              setValue(
-                type === 'number'
-                  ? parseInt(event.target.value)
-                    ? parseInt(event.target.value)
-                    : value
-                  : event.target.value
-              );
-          }}
           readOnly={isReadonly}
           required={isRequired}
-          aria-invalid={isInvalid}
-          onClick={isTouched ? undefined : () => setIsTouched(true)}
+          aria-invalid={!!meta.error}
           onInvalid={onInvalid}
         />
         {isClearable && !isReadonly && (
           <div
             className={clsx('flex items-center justify-center', {
               'visible cursor-pointer opacity-60 transition-opacity ease-in-out hover:opacity-100':
-                value && value.length !== 0,
-              invisible: !value || value.length === 0,
+                meta.value && meta.value.length !== 0,
+              invisible: !meta.value || meta.value.length === 0,
             })}
-            onClick={() => setValue && setValue(type === 'number' ? 0 : '')}
+            // onClick={() => setValue && setValue(type === 'number' ? 0 : '')}
           >
             <svg
               aria-hidden="true"
@@ -131,7 +113,7 @@ export const Input = ({
               <path
                 d="M12 2a10 10 0 1010 10A10.016 10.016 0 0012 2zm3.36 12.3a.754.754 0 010 1.06.748.748 0 01-1.06 0l-2.3-2.3-2.3 2.3a.748.748 0 01-1.06 0 .754.754 0 010-1.06l2.3-2.3-2.3-2.3A.75.75 0 019.7 8.64l2.3 2.3 2.3-2.3a.75.75 0 011.06 1.06l-2.3 2.3z"
                 fill="#F9F8F4"
-                className={clsx({ 'group-hover:fill-left-accent': !isInvalid })}
+                className={clsx({ 'group-hover:fill-left-accent': !meta.error })}
               ></path>
             </svg>
           </div>
@@ -139,7 +121,7 @@ export const Input = ({
         {endContent}
       </div>
       <AnimatePresence>
-        {isInvalid && (
+        {meta.error && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

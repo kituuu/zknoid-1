@@ -1,31 +1,26 @@
 import { clsx } from 'clsx';
+import { useField } from 'formik';
 import { motion } from 'framer-motion';
 
 export const Checkbox = ({
-  isSelected,
-  setIsSelected,
-  isInvalid,
   isReadonly,
+  ...props
 }: {
-  isSelected: boolean;
-  setIsSelected?: (selected: boolean) => void;
-  isInvalid?: boolean;
   isReadonly?: boolean;
+  name: string;
 }) => {
+  const [field, meta] = useField({ ...props, type: 'checkbox' });
+
   return (
-    <motion.div
+    <motion.input
+      type="checkbox"
       className={clsx('rounded-[5px] border p-1', {
-        'hover:border-[#FF00009C]': isInvalid && !isSelected,
-        'border-[#FF0000]': isInvalid,
+        'hover:border-[#FF00009C]': meta.error && !meta.value,
+        'border-[#FF0000]': meta.error,
         'cursor-pointer hover:opacity-80': !isReadonly,
       })}
-      onClick={
-        !isReadonly && setIsSelected
-          ? () => setIsSelected(!isSelected)
-          : undefined
-      }
       animate={
-        isSelected
+        meta.value
           ? { borderColor: '#D2FF00', backgroundColor: '#D2FF00' }
           : { borderColor: '#F9F8F4', backgroundColor: '#212121' }
       }
@@ -46,9 +41,9 @@ export const Checkbox = ({
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth="2"
-          animate={isSelected ? { pathLength: 1 } : { pathLength: 0 }}
+          animate={meta.value ? { pathLength: 1 } : { pathLength: 0 }}
         ></motion.polyline>
       </motion.svg>
-    </motion.div>
+    </motion.input>
   );
 };
