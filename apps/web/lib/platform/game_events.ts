@@ -25,23 +25,23 @@ export type ZkNoidEvent = {
 };
 
 export const GAME_EVENTS: ZkNoidEvent[] = [
-  {
-    name: 'TileVille Challenge',
-    description:
-      'Three-day city-builder challenge in strategic city-builder in game TileVille',
-    eventStarts: new Date('2024-06-21').getTime(),
-    eventEnds: new Date('2024-06-24').getTime(),
-    link: 'https://www.tileville.xyz/',
-    image: '/image/events/banner/tileville_banner.svg',
-  },
-  {
-    name: 'Checkers game test',
-    description: 'Play chess, find bugs, report bugs and grab reward!',
-    eventStarts: new Date('2024-06-30').getTime(),
-    eventEnds: new Date('2024-11-30').getTime(),
-    link: '/games/arkanoid/0',
-    image: '/image/events/banner/checkers_banner.svg',
-  },
+  // {
+  //   name: 'TileVille Challenge',
+  //   description:
+  //     'Three-day city-builder challenge in strategic city-builder in game TileVille',
+  //   eventStarts: new Date('2024-06-21').getTime(),
+  //   eventEnds: new Date('2024-06-24').getTime(),
+  //   link: 'https://www.tileville.xyz/',
+  //   image: '/image/events/banner/tileville_banner.svg',
+  // },
+  // {
+  //   name: 'Checkers game test',
+  //   description: 'Play chess, find bugs, report bugs and grab reward!',
+  //   eventStarts: new Date('2024-06-30').getTime(),
+  //   eventEnds: new Date('2024-11-30').getTime(),
+  //   link: '/games/arkanoid/0',
+  //   image: '/image/events/banner/checkers_banner.svg',
+  // },
 ];
 
 export const getEventType = (event: ZkNoidEvent): ZkNoidEventType => {

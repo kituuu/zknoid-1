@@ -14,13 +14,13 @@ export default function MainSection({ games }: { games: IGame[] }) {
 
   return (
     <>
-      <Swiper />
+      {/* <Swiper /> */}
 
-      <div className={'flex w-full flex-col justify-between lg:flex-row'}>
-        <MobileCentralBlock />
-        <WidgetsSwitch page={page} setPage={setPage} />
-        <CentralBlock page={page} setPage={setPage} />
-      </div>
+      {/* <div className={'flex w-full flex-col justify-between lg:flex-row'}> */}
+      {/* <MobileCentralBlock /> */}
+      {/* <WidgetsSwitch page={page} setPage={setPage} /> */}
+      {/* <CentralBlock page={page} setPage={setPage} /> */}
+      {/* </div> */}
 
       <div className="relative z-0 flex flex-col rounded-b-[10px] border-x border-b border-left-accent bg-bg-dark lg:rounded-tl-[5rem] lg:border-none">
         <div className="absolute left-0 top-0 -z-10 hidden h-full w-full flex-col lg:flex">

@@ -3,7 +3,12 @@ import { GameRecordProof } from 'zknoid-chain-dev';
 import { client } from 'zknoid-chain-dev';
 // import { ModulesConfig } from '@proto-kit/common';
 import { PublicKey } from 'o1js';
+import { type ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 export async function mockProof<O, P>(
   publicOutput: O,
   ProofType: new ({
@@ -19,7 +24,7 @@ export async function mockProof<O, P>(
   }) => P
 ): Promise<P> {
   const dummy = await GameRecordProof.dummy([], [''], 2);
-  
+
   return new ProofType({
     proof: dummy.proof,
     maxProofsVerified: 2,

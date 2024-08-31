@@ -1,7 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 import { fontFamily } from 'tailwindcss/defaultTheme';
 const plugin = require('tailwindcss/plugin');
-
+const {
+  default: flattenColorPalette,
+} = require('tailwindcss/lib/util/flattenColorPalette');
 module.exports = {
   darkMode: ['class'],
   content: [
@@ -62,10 +64,53 @@ module.exports = {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: 0 },
         },
+        'border-beam': {
+          '100%': {
+            'offset-distance': '100%',
+          },
+        },
+        'spin-around': {
+          '0%': {
+            transform: 'translateZ(0) rotate(0)',
+          },
+          '15%, 35%': {
+            transform: 'translateZ(0) rotate(90deg)',
+          },
+          '65%, 85%': {
+            transform: 'translateZ(0) rotate(270deg)',
+          },
+          '100%': {
+            transform: 'translateZ(0) rotate(360deg)',
+          },
+        },
+        slide: {
+          to: {
+            transform: 'translate(calc(100cqw - 100%), 0)',
+          },
+        },
+        orbit: {
+          '0%': {
+            transform:
+              'rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)',
+          },
+          '100%': {
+            transform:
+              'rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)',
+          },
+        },
+        pulse: {
+          '0%, 100%': { boxShadow: '0 0 0 0 var(--pulse-color)' },
+          '50%': { boxShadow: '0 0 0 8px var(--pulse-color)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'border-beam': 'border-beam calc(var(--duration)*1s) infinite linear',
+        'spin-around': 'spin-around calc(var(--speed) * 2) infinite linear',
+        slide: 'slide var(--speed) ease-in-out infinite alternate',
+        orbit: 'orbit calc(var(--duration)*1s) linear infinite',
+        pulse: 'pulse var(--duration) ease-out infinite',
       },
       fontFamily: {
         museo: ['var(--museo-slab)'],
@@ -94,5 +139,17 @@ module.exports = {
     }),
     require('tailwindcss-animate'),
     require('@tailwindcss/typography'),
+    addVariablesForColors,
   ],
 };
+
+function addVariablesForColors({ addBase, theme }: any) {
+  let allColors = flattenColorPalette(theme('colors'));
+  let newVars = Object.fromEntries(
+    Object.entries(allColors).map(([key, val]) => [`--${key}`, val])
+  );
+
+  addBase({
+    ':root': newVars,
+  });
+}
