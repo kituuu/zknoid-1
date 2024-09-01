@@ -17,16 +17,13 @@ import {
   WinWitness,
 } from 'zknoid-chain-dev';
 import GamePage from '@/components/framework/GamePage';
-import { randzuConfig } from './config';
 import ZkNoidGameContext from '@/lib/contexts/ZkNoidGameContext';
 import { useProtokitChainStore } from '@/lib/stores/protokitChain';
 import { MainButtonState } from '@/components/framework/GamePage/PvPGameView';
-import RandzuCoverSVG from './assets/game-cover.svg';
 import { api } from '@/trpc/react';
 import { getEnvContext } from '@/lib/envContext';
 import { DEFAULT_PARTICIPATION_FEE } from 'zknoid-chain-dev/dist/src/engine/LobbyManager';
 import { MOVE_TIMEOUT_IN_BLOCKS } from 'zknoid-chain-dev/dist/src/engine/MatchMaker';
-import RandzuCoverMobileSVG from './assets/game-cover-mobile.svg';
 import GameWidget from '@/components/framework/GameWidget';
 import { motion } from 'framer-motion';
 import { formatPubkey } from '@/lib/utils';
@@ -55,6 +52,8 @@ import {
 } from '@/lib/stores/lobbiesStore';
 import { type PendingTransaction } from '@proto-kit/sequencer';
 import Game from '@/components/pages/Poker/game/Game';
+import { pokerShowdownConfig } from './config';
+import RulesAccordion from './ui/RulesAccordion';
 
 const competition = {
   id: 'global',
@@ -96,7 +95,7 @@ export default function PokerShowdown({
   });
 
   const client_ = client as ClientAppChain<
-    typeof randzuConfig.runtimeModules,
+    typeof pokerShowdownConfig.runtimeModules,
     any,
     any,
     any
@@ -307,12 +306,12 @@ export default function PokerShowdown({
   }, [gameState]);
 
   return (
-    <GamePage gameConfig={randzuConfig} defaultPage={'Game'}>
+    <GamePage gameConfig={pokerShowdownConfig} defaultPage={'Game'}>
       <motion.div
         className={'flex flex-col-reverse gap-4 pt-10 lg:flex-row lg:pt-0'}
         animate={'windowed'}
       >
-        <div className={'flex h-full w-2/5 flex-col gap-4'}>
+        <div className={'flex h-full w-full flex-col gap-4 lg:w-2/5'}>
           <div
             className={
               'flex w-full gap-2 font-plexsans text-[20px]/[20px] uppercase text-left-accent'
@@ -391,34 +390,54 @@ export default function PokerShowdown({
               isReadonly
             />
           )}
-          <Competition
-            isPvp
-            startGame={restart}
-            isRestartBtn={
-              gameState === GameState.Lost ||
-              gameState === GameState.Won ||
-              gameState === GameState.OpponentTimeout
-            }
-            competition={
-              competition && {
-                id: Number(competition?.id),
-                game: {
-                  id: randzuConfig.id,
-                  name: randzuConfig.name,
-                  rules: randzuConfig.rules,
-                  rating: getRatingQuery.data?.rating,
-                  author: randzuConfig.author,
-                },
-                title: lobbiesStore.activeLobby?.name || 'Unknown',
-                reward: lobbiesStore.activeLobby?.reward || 0n,
-                currency: Currency.MINA,
-                startPrice: lobbiesStore.lobbies?.[0]?.fee || 0n,
+          <div className={'flex w-full flex-col'}>
+            <span
+              className={'h-[54px] pb-4 font-museo text-headline-3 font-bold'}
+            >
+              Rules
+            </span>
+            <RulesAccordion
+              title={'Game overwiew'}
+              rules={
+                'Players aim to make the best five-card hand using a combination of their own hole cards and the community cards available to all players. It can be played with 2 to 6 players. The game consists of several rounds of betting, followed by the dealing of community cards.'
               }
-            }
-          />
+              defaultOpen
+            />
+            <RulesAccordion
+              title={'Blinds'}
+              rules={
+                'Each hand begins with two players posting forced bets called the small blind and the big blind. The player to the left of the dealer posts the small blind, and the player to their left posts the big blind. The blinds ensure there is money in the pot and create action. The size of the blinds is determined by lobby settings.'
+              }
+              defaultOpen
+            />
+            <RulesAccordion
+              title={'Betting Stage'}
+              rules={
+                'After the blinds are posted, each player is dealt two private cards (hole cards) face down. The first round of betting begins with the player to the left of the big blind. Players can call (match the current bet), raise (increase the bet), or fold (discard their cards and forfeit the hand). Betting continues clockwise around the table until all players have either folded or called the highest bet.'
+              }
+              defaultOpen
+            />
+          </div>
+          <div className={'flex w-full flex-col'}>
+            <div className={'h-[54px]'} />
+            <RulesAccordion
+              title={'Opening Stage'}
+              rules={
+                'After the initial round of betting, the dealer places three community cards face-up on the table. This is called the flop. Another round of betting occurs, starting with the player to the left of the dealer. Following the flop, the dealer places a fourth community card face-up on the table. This is called the turn. Another round of betting occurs, starting with the player to the left of the dealer. Finally, the dealer places a fifth and final community card face-up on the table. This is called the rive. A final round of betting occurs.'
+              }
+              defaultOpen
+            />
+            <RulesAccordion
+              title={'Determining the Winner'}
+              rules={
+                'After the final round of betting, if there are two or more players remaining, a showdown occurs. Players reveal their hole cards, and the best five-card hand wins the pot. Players can use any combination of their hole cards and the community cards to form their hand. The player with the highest-ranking hand wins the pot. If two or more players have the same hand, the pot is split evenly among them. The game then moves to the next hand, and the dealer button rotates clockwise to the next player, and the process repeats.'
+              }
+              defaultOpen
+            />
+          </div>
         </div>
         <GameWidget
-          author={randzuConfig.author}
+          author={pokerShowdownConfig.author}
           isPvp
           playersCount={matchQueue.getQueueLength()}
           gameId="randzu"
@@ -427,16 +446,18 @@ export default function PokerShowdown({
             <>
               {!competition ? (
                 <GameWrap>
-                  <UnsetCompetitionPopup gameId={randzuConfig.id} />
+                  <UnsetCompetitionPopup gameId={pokerShowdownConfig.id} />
                 </GameWrap>
               ) : (
                 <>
                   {gameState == GameState.Won &&
                     (isRateGame &&
-                    !rateGameStore.ratedGamesIds.includes(randzuConfig.id) ? (
+                    !rateGameStore.ratedGamesIds.includes(
+                      pokerShowdownConfig.id
+                    ) ? (
                       <GameWrap>
                         <RateGame
-                          gameId={randzuConfig.id}
+                          gameId={pokerShowdownConfig.id}
                           onClick={() => setIsRateGame(false)}
                         />
                       </GameWrap>
@@ -492,29 +513,29 @@ export default function PokerShowdown({
                           />
                           <path
                             d="M80.442 149.22C118.427 149.22 149.22 118.427 149.22 80.442C149.22 42.457 118.427 11.6641 80.442 11.6641C42.457 11.6641 11.6641 42.457 11.6641 80.442C11.6641 118.427 42.457 149.22 80.442 149.22Z"
-                            stroke="#D2FF00"
+                            stroke="#EEE1B3"
                             strokeWidth="8"
                             strokeMiterlimit="10"
                           />
                           <path
                             d="M52.8568 92.7354C56.0407 92.7354 58.6218 82.6978 58.6218 70.3157C58.6218 57.9337 56.0407 47.8961 52.8568 47.8961C49.6729 47.8961 47.0918 57.9337 47.0918 70.3157C47.0918 82.6978 49.6729 92.7354 52.8568 92.7354Z"
-                            fill="#D2FF00"
+                            fill="#EEE1B3"
                           />
                           <path
                             d="M103.461 92.7354C106.645 92.7354 109.226 82.6978 109.226 70.3157C109.226 57.9337 106.645 47.8961 103.461 47.8961C100.277 47.8961 97.6963 57.9337 97.6963 70.3157C97.6963 82.6978 100.277 92.7354 103.461 92.7354Z"
-                            fill="#D2FF00"
+                            fill="#EEE1B3"
                           />
                           <path
                             d="M135.489 76.4906H118.194V82.7178H135.489V76.4906Z"
-                            fill="#D2FF00"
+                            fill="#EEE1B3"
                           />
                           <path
                             d="M38.7647 76.4906H21.4697V82.7178H38.7647V76.4906Z"
-                            fill="#D2FF00"
+                            fill="#EEE1B3"
                           />
                           <path
                             d="M50.5391 116.29C54.8955 113.646 65.1452 108.224 79.293 108.034C93.6805 107.841 104.212 113.164 108.616 115.72"
-                            stroke="#D2FF00"
+                            stroke="#EEE1B3"
                             strokeWidth="5"
                             strokeMiterlimit="10"
                           />

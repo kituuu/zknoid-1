@@ -11,7 +11,7 @@ const ReadOnlyCheckbox = ({ active }: { active: boolean }) => {
       className={'relative rounded-[5px] border p-1'}
       variants={{
         default: { borderColor: '#F9F8F4', backgroundColor: '#212121' },
-        active: { borderColor: '#D2FF00', backgroundColor: '#D2FF00' },
+        active: { borderColor: '#EEE1B3', backgroundColor: '#EEE1B3' },
       }}
       animate={active ? 'active' : 'default'}
       transition={{ type: 'spring', duration: 0.4, bounce: 0 }}

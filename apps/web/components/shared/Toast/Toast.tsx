@@ -65,7 +65,7 @@ toast.success = (
             <motion.polyline
               fill="none"
               points="1 9 7 14 15 4"
-              stroke="#D2FF00"
+              stroke="#EEE1B3"
               strokeDasharray="22"
               strokeDashoffset="44"
               strokeLinecap="round"

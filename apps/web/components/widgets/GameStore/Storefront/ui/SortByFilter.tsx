@@ -35,9 +35,9 @@ export function SortByFilter<T extends string>({
         animate={isOpen ? 'open' : 'closed'}
         whileHover={{
           borderBottomWidth: '1px',
-          borderColor: '#D2FF00',
-          borderBottomColor: '#D2FF00',
-          color: '#D2FF00',
+          borderColor: '#EEE1B3',
+          borderBottomColor: '#EEE1B3',
+          color: '#EEE1B3',
         }}
       >
         <span className={'font-plexsans text-main'}>Sort By: {sortBy}</span>
@@ -82,7 +82,7 @@ export function SortByFilter<T extends string>({
                   setIsOpen(false);
                 }}
                 className={
-                  'bg-bg-grey h-full w-full cursor-pointer px-4 py-2 font-plexsans text-main last:pb-4 hover:bg-[#252525] hover:text-left-accent'
+                  'h-full w-full cursor-pointer bg-bg-grey px-4 py-2 font-plexsans text-main last:pb-4 hover:bg-[#252525] hover:text-left-accent'
                 }
               >
                 {value}

@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { NextPage } from 'next';
-// import io from 'socket.io-client';
-// import queryString from 'query-string';
+import React, { useState, useEffect } from 'react';
 import Cards from './Cards';
-import { Deck, DECK_OF_CARDS } from '../../../../games/poker/utils/deck';
+import {
+  Deck,
+  DECK_OF_CARDS,
+} from '../../../../games/pokershowdown/utils/deck';
 import RaiseModal from './RaiseModal';
 import { RandzuField } from 'zknoid-chain-dev';
 import { IGameInfo, MatchQueueState } from '@/lib/stores/matchQueue';
-import shuffleArray from '@/games/poker/utils/shuffleArray';
+import shuffleArray from '@/games/pokerShowdown/utils/shuffleArray';
 
 // let socket;
 // const ENDPOINT = process.env.NEXT_PUBLIC_ENDPOINT;

@@ -24,7 +24,7 @@ export default function Pagination({
         >
           <path
             d="M8.51116 15L1 8L8.51116 1"
-            stroke="#D2FF00"
+            stroke="#EEE1B3"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -65,7 +65,7 @@ export default function Pagination({
         >
           <path
             d="M1.5113 15L9.02246 8L1.5113 1"
-            stroke="#D2FF00"
+            stroke="#EEE1B3"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"

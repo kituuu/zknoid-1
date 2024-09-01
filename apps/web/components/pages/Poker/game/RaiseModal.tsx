@@ -51,88 +51,41 @@ const RaiseModal: React.FC<RaiseModalProps> = ({
     <>
       <button
         onClick={toggleModal}
-        style={{
-          padding: '0.5rem 1rem',
-          backgroundColor: '#000',
-          color: '#fff',
-          border: '2px solid black',
-          borderRadius: '5px',
-          cursor: 'pointer',
-          width: '10rem',
-        }}
+        className="w-40 rounded-lg border-2 border-bg-dark bg-bg-dark px-4 py-2 text-foreground hover:bg-bg-grey disabled:opacity-50"
         disabled={isDisabled}
       >
         Raise
       </button>
 
       {isOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: '#000',
-              borderRadius: '8px',
-              width: '20rem',
-              padding: '2rem',
-              textAlign: 'center',
-            }}
-          >
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="relative w-80 rounded-lg bg-bg-dark p-6 text-center">
             <button
               onClick={toggleModal}
-              style={{
-                position: 'absolute',
-                top: '10px',
-                right: '10px',
-                backgroundColor: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1.5rem',
-              }}
+              className="absolute right-2 top-2 text-2xl text-foreground hover:text-middle-accent"
             >
               &times;
             </button>
-            <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Raise</h2>
+            <h2 className="mb-4 text-xl text-foreground">Raise</h2>
             <form onSubmit={handleSubmit}>
-              <div style={{ marginBottom: '1rem' }}>
+              <div className="mb-4">
                 <input
                   type="number"
                   value={raise}
                   onChange={(e) => setRaise(parseFloat(e.target.value))}
-                  style={{
-                    padding: '0.5rem',
-                    width: '70%',
-                    fontSize: '1rem',
-                    borderRadius: '5px',
-                    border: '1px solid #ccc',
-                  }}
+                  className="w-3/4 rounded-lg border border-gray-600 bg-bg-grey p-2 text-lg text-foreground"
                 />
               </div>
-              {errors && (
-                <p style={{ color: 'red', fontSize: '0.875rem' }}>{errors}</p>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              {errors && <p className="mb-4 text-sm text-red-500">{errors}</p>}
+              <div className="flex justify-between">
                 <button
                   type="submit"
                   disabled={isSubmitting || isDisabled}
-                  style={{
-                    backgroundColor: '#1877F2',
-                    color: '#fff',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '5px',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
+                  className={`rounded-lg px-4 py-2 ${
+                    isSubmitting
+                      ? 'cursor-not-allowed bg-middle-accent'
+                      : 'bg-middle-accent hover:bg-right-accent'
+                  } text-dark-buttons-text`}
                 >
                   {isSubmitting ? 'Raising...' : 'Raise'}
                 </button>

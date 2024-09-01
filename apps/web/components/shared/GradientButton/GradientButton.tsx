@@ -57,7 +57,7 @@ export default function GradientButton({
         className={'absolute left-0 -z-10 h-full'}
         variants={{
           visible: {
-            backgroundColor: '#D2FF00',
+            backgroundColor: '#EEE1B3',
             width: '100%',
           },
         }}

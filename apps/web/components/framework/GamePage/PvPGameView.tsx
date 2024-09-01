@@ -121,7 +121,7 @@ export const PvPGameView = (props: PvPGameViewProps) => {
             >
               <path
                 d="M9.5 0L11.6329 6.56434H18.535L12.9511 10.6213L15.084 17.1857L9.5 13.1287L3.91604 17.1857L6.04892 10.6213L0.464963 6.56434H7.36712L9.5 0Z"
-                fill="#D2FF00"
+                fill="#EEE1B3"
               />
             </svg>
           </div>

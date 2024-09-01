@@ -45,7 +45,7 @@ export default function Notification({
         ) : (
           <>
             {notification.type === 'loader' && (
-              <Loader size={19} color={'#D2FF00'} />
+              <Loader size={19} color={'#EEE1B3'} />
             )}
             {notification.type === 'success' && (
               <motion.div
@@ -58,8 +58,8 @@ export default function Notification({
                     backgroundColor: '#212121',
                   },
                   active: {
-                    borderColor: '#D2FF00',
-                    backgroundColor: '#D2FF00',
+                    borderColor: '#EEE1B3',
+                    backgroundColor: '#EEE1B3',
                   },
                   error: { borderColor: '#FF0000' },
                 }}
@@ -96,8 +96,8 @@ export default function Notification({
                     backgroundColor: '#212121',
                   },
                   active: {
-                    borderColor: '#D2FF00',
-                    backgroundColor: '#D2FF00',
+                    borderColor: '#EEE1B3',
+                    backgroundColor: '#EEE1B3',
                   },
                   error: { borderColor: '#FF0000', backgroundColor: '#FF0000' },
                 }}

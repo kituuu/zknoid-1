@@ -45,7 +45,7 @@ module.exports = {
         'bg-dark': '#141414',
         'bg-grey': '#212121',
         foreground: '#F9F8F4',
-        'left-accent': '#D2FF00',
+        'left-accent': '#EEE1B3',
         'middle-accent': '#FF5B23',
         'right-accent': '#DCB8FF',
         'dark-buttons-text': '#212121',

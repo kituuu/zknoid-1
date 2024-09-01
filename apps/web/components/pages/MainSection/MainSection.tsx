@@ -32,7 +32,7 @@ export default function MainSection({ games }: { games: IGame[] }) {
           >
             <path
               d="M1451 2341H51C23.3858 2341 1 2318.37 1 2290.75V107V51C1 23.3857 23.3858 1 51 1H650.474C663.726 1 676.436 6.26099 685.812 15.627L723.596 53.373C732.971 62.739 745.681 68 758.933 68H1451C1478.61 68 1501 90.3857 1501 118V182V2291C1501 2318.61 1478.61 2341 1451 2341Z"
-              stroke="#D2FF00"
+              stroke="#EEE1B3"
               strokeWidth="0.160rem"
               vectorEffect="non-scaling-stroke"
             />
@@ -47,7 +47,7 @@ export default function MainSection({ games }: { games: IGame[] }) {
           >
             <path
               d="M1451 2341H51C23.3858 2341 1 2318.37 1 2290.75V107V51C1 23.3857 23.3858 1 51 1H650.474C663.726 1 676.436 6.26099 685.812 15.627L723.596 53.373C732.971 62.739 745.681 68 758.933 68H1451C1478.61 68 1501 90.3857 1501 118V182V2291C1501 2318.61 1478.61 2341 1451 2341Z"
-              stroke="#D2FF00"
+              stroke="#EEE1B3"
               strokeWidth="0.160rem"
               vectorEffect="non-scaling-stroke"
             />

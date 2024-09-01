@@ -64,7 +64,7 @@ export default function BaseModal({
                       width="40"
                       height="4"
                       transform="rotate(45 13.5469 16.7344)"
-                      fill="#D2FF00"
+                      fill="#EEE1B3"
                     />
                     <rect
                       x="41.8438"
@@ -72,7 +72,7 @@ export default function BaseModal({
                       width="40"
                       height="4"
                       transform="rotate(135 41.8438 19.5625)"
-                      fill="#D2FF00"
+                      fill="#EEE1B3"
                     />
                   </svg>
                 )}

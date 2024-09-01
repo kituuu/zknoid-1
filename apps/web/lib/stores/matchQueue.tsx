@@ -3,7 +3,7 @@ import { PublicKey, UInt64 } from 'o1js';
 import { RoundIdxUser } from 'zknoid-chain-dev';
 import { MatchMaker, PENDING_BLOCKS_NUM_CONST } from 'zknoid-chain-dev';
 import { type ModuleQuery } from '@proto-kit/sequencer';
-import { Deck } from '@/games/poker/utils/deck';
+import { Deck } from '@/games/pokershowdown/utils/deck';
 
 export interface MatchQueueState {
   loading: boolean;

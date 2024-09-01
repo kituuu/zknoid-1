@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Card from './Card'; // Assuming Card component is defined elsewhere
-import { Deck } from '@/games/poker/utils/deck';
+import { Deck } from '@/games/pokershowdown/utils/deck';
 
 type Suit = 'diamonds' | 'clubs' | 'spades' | 'hearts' | 'BACK';
 type CardValue = number | 'J' | 'Q' | 'K' | 'A';
