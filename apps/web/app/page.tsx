@@ -12,6 +12,7 @@ import { RotatingCards } from '@/components/rotatingcards';
 import { TextHoverEffect } from '@/components/ui/text-hover-effect';
 import HyperText from '@/components/magicui/hyper-text';
 import Particles from '@/components/magicui/particles';
+import Game from '@/components/pages/Poker/game/Game';
 
 export default function Home() {
   const [games, setGames] = useState<IGame[]>(
@@ -98,6 +99,7 @@ export default function Home() {
         </main>
 
         <Footer />
+        <Game />
 
         {/*<ToastContainer />*/}
       </div>

@@ -13,15 +13,15 @@ const PokerPage: React.FC = () => {
   const [waiting, setWaiting] = useState<string[]>([]);
   const [waitingToggle, setWaitingToggle] = useState(false);
   const [code, setCode] = useState('');
-  const { user } = useContext(UserContext);
+  //   const { user } = useContext(UserContext);
   const router = useRouter();
 
   useEffect(() => {
-    socket = io.connect(ENDPOINT, {
-      forceNew: true,
-      reconnectionAttempts: 'Infinity',
-      transports: ['websocket'],
-    });
+    // socket = io.connect(ENDPOINT, {
+    //   forceNew: true,
+    //   reconnectionAttempts: 'Infinity',
+    //   transports: ['websocket'],
+    // });
 
     // Cleanup on component unmount
     return () => {
@@ -67,11 +67,11 @@ const PokerPage: React.FC = () => {
   return (
     <div className="Homepage">
       <div className="center-content">
-        {!user ? (
+        {/* {!user ? (
           <h1>Sign In/Register to unlock Premium features</h1>
         ) : (
           <h1>Welcome, {user.username}!</h1>
-        )}
+        )} */}
 
         <div className="auth-buttons">
           <GameCodeModal />

@@ -81,7 +81,7 @@ const RaiseModal: React.FC<RaiseModalProps> = ({
         >
           <div
             style={{
-              backgroundColor: '#fff',
+              backgroundColor: '#000',
               borderRadius: '8px',
               width: '20rem',
               padding: '2rem',
