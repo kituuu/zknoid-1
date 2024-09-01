@@ -7,7 +7,7 @@ import { useNetworkStore } from '@/lib/stores/network';
 import {
   useObserveRandzuMatchQueue,
   useRandzuMatchQueueStore,
-} from '@/games/randzu/stores/matchQueue';
+} from '@/games/pokerShowdown/stores/matchQueue';
 import { useStore } from 'zustand';
 import { useSessionKeyStore } from '@/lib/stores/sessionKeyStorage';
 import {
@@ -48,7 +48,7 @@ import toast from '@/components/shared/Toast';
 import { useToasterStore } from '@/lib/stores/toasterStore';
 import { useRateGameStore } from '@/lib/stores/rateGameStore';
 import { GameState } from './lib/gameState';
-import { useStartGame } from '@/games/randzu/features/startGame';
+import { useStartGame } from '@/games/pokerShowdown/features/startGame';
 import {
   useLobbiesStore,
   useObserveLobbiesStore,
@@ -63,7 +63,7 @@ const competition = {
   prizeFund: 0n,
 };
 
-export default function Randzu({
+export default function PokerShowdown({
   params,
 }: {
   params: { competitionId: string };

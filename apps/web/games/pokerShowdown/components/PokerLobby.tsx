@@ -1,14 +1,12 @@
 import GamePage from '@/components/framework/GamePage';
-import { randzuConfig } from '@/games/randzu/config';
-import RandzuCoverSVG from '@/games/randzu/assets/game-cover.svg';
-import RandzuCoverMobileSVG from '@/games/randzu/assets/game-cover-mobile.svg';
 import { useContext, useState } from 'react';
 import ZkNoidGameContext from '@/lib/contexts/ZkNoidGameContext';
 import { ClientAppChain, ProtoUInt64 } from 'zknoid-chain-dev';
 import { useNetworkStore } from '@/lib/stores/network';
 import LobbyPage from '@/components/framework/Lobby/LobbyPage';
+import { pokerShowdownConfig } from '../config';
 
-export default function RandzuLobby({
+export default function PokerLobby({
   params,
 }: {
   params: { lobbyId: string };
@@ -22,19 +20,14 @@ export default function RandzuLobby({
   }
 
   const client_ = client as ClientAppChain<
-    typeof randzuConfig.runtimeModules,
+    typeof pokerShowdownConfig.runtimeModules,
     any,
     any,
     any
   >;
 
   return (
-    <GamePage
-      gameConfig={randzuConfig}
-      image={RandzuCoverSVG}
-      mobileImage={RandzuCoverMobileSVG}
-      defaultPage={'Lobby list'}
-    >
+    <GamePage gameConfig={pokerShowdownConfig} defaultPage={'Lobby list'}>
       <LobbyPage
         lobbyId={params.lobbyId}
         query={
@@ -43,7 +36,7 @@ export default function RandzuLobby({
             : undefined
         }
         contractName={'RandzuLogic'}
-        config={randzuConfig}
+        config={pokerShowdownConfig}
       />
     </GamePage>
   );

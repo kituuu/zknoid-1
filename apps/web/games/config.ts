@@ -5,8 +5,9 @@
 // import { lotteryConfig } from '@/games/lottery/config';
 
 import { createConfig } from '@/lib/createConfig';
-import { randzuConfig, randzuRedirectConfig } from './randzu/config';
+
 import { pokerConfig } from '@/games/poker/config';
+import { pokerShowdownConfig } from './pokerShowdown/config';
 export const zkNoidConfig = createConfig({
   games: [
     // lotteryConfig,
@@ -15,6 +16,6 @@ export const zkNoidConfig = createConfig({
     // thimblerigConfig,
     // arkanoidConfig,
     pokerConfig,
-    randzuConfig,
+    pokerShowdownConfig,
   ],
 });
