@@ -21,7 +21,7 @@ export default function Checkbox({
       )}
       variants={{
         default: { borderColor: '#F9F8F4', backgroundColor: '#212121' },
-        active: { borderColor: '#D2FF00', backgroundColor: '#D2FF00' },
+        active: { borderColor: '#EEE1B3', backgroundColor: '#EEE1B3' },
         error: { borderColor: '#FF0000' },
       }}
       animate={

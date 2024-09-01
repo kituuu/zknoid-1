@@ -49,15 +49,15 @@ export function RotatingCards() {
 
 const Icons = {
   redjoker: () => {
-    return <img src="/poker_cards/11_2.svg" alt="" />;
+    return <img src="/cards/HEARTS/HEARTS_Q.svg" alt="" />;
   },
   blackking: () => {
-    return <img src="/poker_cards/13_0.svg" alt="" />;
+    return <img src="/cards/HEARTS/HEARTS_Q.svg" alt="" />;
   },
   redqueen: () => {
-    return <img src="/poker_cards/12_1.svg" alt="" />;
+    return <img src="/cards/HEARTS/HEARTS_Q.svg" alt="" />;
   },
   blackace: () => {
-    return <img src="/poker_cards/14_3.svg" alt="" />;
+    return <img src="/cards/HEARTS/HEARTS_Q.svg" alt="" />;
   },
 };

@@ -7,7 +7,7 @@ import { useNetworkStore } from '@/lib/stores/network';
 import {
   useObserveRandzuMatchQueue,
   useRandzuMatchQueueStore,
-} from '@/games/randzu/stores/matchQueue';
+} from '@/games/pokerShowdown/stores/matchQueue';
 import { useStore } from 'zustand';
 import { useSessionKeyStore } from '@/lib/stores/sessionKeyStorage';
 import {
@@ -17,16 +17,13 @@ import {
   WinWitness,
 } from 'zknoid-chain-dev';
 import GamePage from '@/components/framework/GamePage';
-import { randzuConfig } from './config';
 import ZkNoidGameContext from '@/lib/contexts/ZkNoidGameContext';
 import { useProtokitChainStore } from '@/lib/stores/protokitChain';
 import { MainButtonState } from '@/components/framework/GamePage/PvPGameView';
-import RandzuCoverSVG from './assets/game-cover.svg';
 import { api } from '@/trpc/react';
 import { getEnvContext } from '@/lib/envContext';
 import { DEFAULT_PARTICIPATION_FEE } from 'zknoid-chain-dev/dist/src/engine/LobbyManager';
 import { MOVE_TIMEOUT_IN_BLOCKS } from 'zknoid-chain-dev/dist/src/engine/MatchMaker';
-import RandzuCoverMobileSVG from './assets/game-cover-mobile.svg';
 import GameWidget from '@/components/framework/GameWidget';
 import { motion } from 'framer-motion';
 import { formatPubkey } from '@/lib/utils';
@@ -48,12 +45,15 @@ import toast from '@/components/shared/Toast';
 import { useToasterStore } from '@/lib/stores/toasterStore';
 import { useRateGameStore } from '@/lib/stores/rateGameStore';
 import { GameState } from './lib/gameState';
-import { useStartGame } from '@/games/randzu/features/startGame';
+import { useStartGame } from '@/games/pokerShowdown/features/startGame';
 import {
   useLobbiesStore,
   useObserveLobbiesStore,
 } from '@/lib/stores/lobbiesStore';
 import { type PendingTransaction } from '@proto-kit/sequencer';
+import Game from '@/components/pages/Poker/game/Game';
+import { pokerShowdownConfig } from './config';
+import RulesAccordion from './ui/RulesAccordion';
 
 const competition = {
   id: 'global',
@@ -62,7 +62,7 @@ const competition = {
   prizeFund: 0n,
 };
 
-export default function Randzu({
+export default function PokerShowdown({
   params,
 }: {
   params: { competitionId: string };
@@ -95,7 +95,7 @@ export default function Randzu({
   });
 
   const client_ = client as ClientAppChain<
-    typeof randzuConfig.runtimeModules,
+    typeof pokerShowdownConfig.runtimeModules,
     any,
     any,
     any
@@ -155,68 +155,68 @@ export default function Randzu({
   };
 
   // nonSSR
-  const onCellClicked = async (x: number, y: number) => {
-    if (!matchQueue.gameInfo?.isCurrentUserMove) return;
-    if (matchQueue.gameInfo.field.value[y][x] != 0) return;
-    console.log('After checks');
+  // const onCellClicked = async (x: number, y: number) => {
+  //   if (!matchQueue.gameInfo?.isCurrentUserMove) return;
+  //   if (matchQueue.gameInfo.field.value[y][x] != 0) return;
+  //   console.log('After checks');
 
-    const currentUserId = matchQueue.gameInfo.currentUserIndex + 1;
+  //   const currentUserId = matchQueue.gameInfo.currentUserIndex + 1;
 
-    const updatedField = (matchQueue.gameInfo.field as RandzuField).value.map(
-      (x: UInt32[]) => x.map((x) => x.toBigint())
-    );
+  //   const updatedField = (matchQueue.gameInfo.field as RandzuField).value.map(
+  //     (x: UInt32[]) => x.map((x) => x.toBigint())
+  //   );
 
-    updatedField[y][x] = matchQueue.gameInfo.currentUserIndex + 1;
-    // updatedField[x][y] = matchQueue.gameInfo.currentUserIndex + 1;
+  //   updatedField[y][x] = matchQueue.gameInfo.currentUserIndex + 1;
+  //   // updatedField[x][y] = matchQueue.gameInfo.currentUserIndex + 1;
 
-    const randzuLogic = client.runtime.resolve('RandzuLogic');
+  //   const randzuLogic = client.runtime.resolve('RandzuLogic');
 
-    const updatedRandzuField = RandzuField.from(updatedField);
+  //   const updatedRandzuField = RandzuField.from(updatedField);
 
-    const winWitness1 = updatedRandzuField.checkWin(currentUserId);
+  //   const winWitness1 = updatedRandzuField.checkWin(currentUserId);
 
-    const tx = await client.transaction(
-      sessionPrivateKey.toPublicKey(),
-      async () => {
-        randzuLogic.makeMove(
-          UInt64.from(matchQueue.gameInfo!.gameId),
-          updatedRandzuField,
-          winWitness1 ??
-            new WinWitness(
-              // @ts-ignore
-              {
-                x: UInt32.from(0),
-                y: UInt32.from(0),
-                directionX: Int64.from(0),
-                directionY: Int64.from(0),
-              }
-            )
-        );
-      }
-    );
+  //   const tx = await client.transaction(
+  //     sessionPrivateKey.toPublicKey(),
+  //     async () => {
+  //       randzuLogic.makeMove(
+  //         UInt64.from(matchQueue.gameInfo!.gameId),
+  //         updatedRandzuField,
+  //         winWitness1 ??
+  //           new WinWitness(
+  //             // @ts-ignore
+  //             {
+  //               x: UInt32.from(0),
+  //               y: UInt32.from(0),
+  //               directionX: Int64.from(0),
+  //               directionY: Int64.from(0),
+  //             }
+  //           )
+  //       );
+  //     }
+  //   );
 
-    setLoading(true);
-    setLoadingElement({
-      x,
-      y,
-    });
+  //   setLoading(true);
+  //   setLoadingElement({
+  //     x,
+  //     y,
+  //   });
 
-    tx.transaction = tx.transaction?.sign(sessionPrivateKey);
-    await tx.send();
+  //   tx.transaction = tx.transaction?.sign(sessionPrivateKey);
+  //   await tx.send();
 
-    if (winWitness1) {
-      await progress.mutateAsync({
-        userAddress: networkStore.address!,
-        section: 'RANDZU',
-        id: 2,
-        txHash: JSON.stringify(
-          (tx.transaction! as PendingTransaction).toJSON()
-        ),
-        roomId: competition.id,
-        envContext: getEnvContext(),
-      });
-    }
-  };
+  //   if (winWitness1) {
+  //     await progress.mutateAsync({
+  //       userAddress: networkStore.address!,
+  //       section: 'RANDZU',
+  //       id: 2,
+  //       txHash: JSON.stringify(
+  //         (tx.transaction! as PendingTransaction).toJSON()
+  //       ),
+  //       roomId: competition.id,
+  //       envContext: getEnvContext(),
+  //     });
+  //   }
+  // };
 
   useEffect(() => {
     setLoading(false);
@@ -306,25 +306,12 @@ export default function Randzu({
   }, [gameState]);
 
   return (
-    <GamePage
-      gameConfig={randzuConfig}
-      image={RandzuCoverSVG}
-      mobileImage={RandzuCoverMobileSVG}
-      defaultPage={'Game'}
-    >
+    <GamePage gameConfig={pokerShowdownConfig} defaultPage={'Game'}>
       <motion.div
-        className={
-          'flex grid-cols-4 flex-col-reverse gap-4 pt-10 lg:grid lg:pt-0'
-        }
+        className={'flex flex-col-reverse gap-4 pt-10 lg:flex-row lg:pt-0'}
         animate={'windowed'}
       >
-        <div className={'flex flex-col gap-4 lg:hidden'}>
-          <span className={'w-full text-headline-2 font-bold'}>Rules</span>
-          <span className={'font-plexsans text-buttons-menu font-normal'}>
-            {randzuConfig.rules}
-          </span>
-        </div>
-        <div className={'hidden h-full w-full flex-col gap-4 lg:flex'}>
+        <div className={'flex h-full w-full flex-col gap-4 lg:w-2/5'}>
           <div
             className={
               'flex w-full gap-2 font-plexsans text-[20px]/[20px] uppercase text-left-accent'
@@ -403,9 +390,54 @@ export default function Randzu({
               isReadonly
             />
           )}
+          <div className={'flex w-full flex-col'}>
+            <span
+              className={'h-[54px] pb-4 font-museo text-headline-3 font-bold'}
+            >
+              Rules
+            </span>
+            <RulesAccordion
+              title={'Game overwiew'}
+              rules={
+                'Players aim to make the best five-card hand using a combination of their own hole cards and the community cards available to all players. It can be played with 2 to 6 players. The game consists of several rounds of betting, followed by the dealing of community cards.'
+              }
+              defaultOpen
+            />
+            <RulesAccordion
+              title={'Blinds'}
+              rules={
+                'Each hand begins with two players posting forced bets called the small blind and the big blind. The player to the left of the dealer posts the small blind, and the player to their left posts the big blind. The blinds ensure there is money in the pot and create action. The size of the blinds is determined by lobby settings.'
+              }
+              defaultOpen
+            />
+            <RulesAccordion
+              title={'Betting Stage'}
+              rules={
+                'After the blinds are posted, each player is dealt two private cards (hole cards) face down. The first round of betting begins with the player to the left of the big blind. Players can call (match the current bet), raise (increase the bet), or fold (discard their cards and forfeit the hand). Betting continues clockwise around the table until all players have either folded or called the highest bet.'
+              }
+              defaultOpen
+            />
+          </div>
+          <div className={'flex w-full flex-col'}>
+            <div className={'h-[54px]'} />
+            <RulesAccordion
+              title={'Opening Stage'}
+              rules={
+                'After the initial round of betting, the dealer places three community cards face-up on the table. This is called the flop. Another round of betting occurs, starting with the player to the left of the dealer. Following the flop, the dealer places a fourth community card face-up on the table. This is called the turn. Another round of betting occurs, starting with the player to the left of the dealer. Finally, the dealer places a fifth and final community card face-up on the table. This is called the rive. A final round of betting occurs.'
+              }
+              defaultOpen
+            />
+            <RulesAccordion
+              title={'Determining the Winner'}
+              rules={
+                'After the final round of betting, if there are two or more players remaining, a showdown occurs. Players reveal their hole cards, and the best five-card hand wins the pot. Players can use any combination of their hole cards and the community cards to form their hand. The player with the highest-ranking hand wins the pot. If two or more players have the same hand, the pot is split evenly among them. The game then moves to the next hand, and the dealer button rotates clockwise to the next player, and the process repeats.'
+              }
+              defaultOpen
+            />
+          </div>
         </div>
         <GameWidget
-          author={randzuConfig.author}
+          author={pokerShowdownConfig.author}
           isPvp
           playersCount={matchQueue.getQueueLength()}
           gameId="randzu"
@@ -414,16 +446,18 @@ export default function Randzu({
             <>
               {!competition ? (
                 <GameWrap>
-                  <UnsetCompetitionPopup gameId={randzuConfig.id} />
+                  <UnsetCompetitionPopup gameId={pokerShowdownConfig.id} />
                 </GameWrap>
               ) : (
                 <>
                   {gameState == GameState.Won &&
                     (isRateGame &&
-                    !rateGameStore.ratedGamesIds.includes(randzuConfig.id) ? (
+                    !rateGameStore.ratedGamesIds.includes(
+                      pokerShowdownConfig.id
+                    ) ? (
                       <GameWrap>
                         <RateGame
-                          gameId={randzuConfig.id}
+                          gameId={pokerShowdownConfig.id}
                           onClick={() => setIsRateGame(false)}
                         />
                       </GameWrap>
@@ -479,29 +513,29 @@ export default function Randzu({
                           />
                           <path
                             d="M80.442 149.22C118.427 149.22 149.22 118.427 149.22 80.442C149.22 42.457 118.427 11.6641 80.442 11.6641C42.457 11.6641 11.6641 42.457 11.6641 80.442C11.6641 118.427 42.457 149.22 80.442 149.22Z"
-                            stroke="#D2FF00"
+                            stroke="#EEE1B3"
                             strokeWidth="8"
                             strokeMiterlimit="10"
                           />
                           <path
                             d="M52.8568 92.7354C56.0407 92.7354 58.6218 82.6978 58.6218 70.3157C58.6218 57.9337 56.0407 47.8961 52.8568 47.8961C49.6729 47.8961 47.0918 57.9337 47.0918 70.3157C47.0918 82.6978 49.6729 92.7354 52.8568 92.7354Z"
-                            fill="#D2FF00"
+                            fill="#EEE1B3"
                           />
                           <path
                             d="M103.461 92.7354C106.645 92.7354 109.226 82.6978 109.226 70.3157C109.226 57.9337 106.645 47.8961 103.461 47.8961C100.277 47.8961 97.6963 57.9337 97.6963 70.3157C97.6963 82.6978 100.277 92.7354 103.461 92.7354Z"
-                            fill="#D2FF00"
+                            fill="#EEE1B3"
                           />
                           <path
                             d="M135.489 76.4906H118.194V82.7178H135.489V76.4906Z"
-                            fill="#D2FF00"
+                            fill="#EEE1B3"
                           />
                           <path
                             d="M38.7647 76.4906H21.4697V82.7178H38.7647V76.4906Z"
-                            fill="#D2FF00"
+                            fill="#EEE1B3"
                           />
                           <path
                             d="M50.5391 116.29C54.8955 113.646 65.1452 108.224 79.293 108.034C93.6805 107.841 104.212 113.164 108.616 115.72"
-                            stroke="#D2FF00"
+                            stroke="#EEE1B3"
                             strokeWidth="5"
                             strokeMiterlimit="10"
                           />
@@ -535,89 +569,22 @@ export default function Randzu({
               <InstallWallet />
             </GameWrap>
           )}
+
           {(gameState === GameState.Matchmaking ||
             gameState === GameState.MatchRegistration ||
             gameState === GameState.CurrentPlayerTurn ||
             gameState === GameState.OpponentTurn) && (
-            <GameView
+            <Game
               gameInfo={matchQueue.gameInfo}
-              onCellClicked={onCellClicked}
+              matchInfo={matchQueue}
+              // onCellClicked={onCellClicked}
+
               loadingElement={loadingElement}
               loading={loading}
             />
           )}
         </GameWidget>
-        <div className={'flex flex-col lg:hidden'}>
-          {mainButtonState == MainButtonState.YourTurn && (
-            <Button
-              startContent={
-                <svg
-                  width="26"
-                  height="18"
-                  viewBox="0 0 26 18"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path d="M1 7L10 16L25 1" stroke="#252525" strokeWidth="2" />
-                </svg>
-              }
-              className="uppercase"
-              label={'YOUR TURN'}
-              isReadonly
-            />
-          )}
-          {mainButtonState == MainButtonState.OpponentsTurn && (
-            <Button
-              startContent={
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M12.5134 10.5851L1.476 0L0.00136988 1.41421L11.0387 11.9994L0 22.5858L1.47463 24L12.5134 13.4136L22.5242 23.0143L23.9989 21.6001L13.988 11.9994L23.9975 2.39996L22.5229 0.98575L12.5134 10.5851Z"
-                    fill="#252525"
-                  />
-                </svg>
-              }
-              className="uppercase"
-              label={"OPPONENT'S TURN"}
-              isReadonly
-            />
-          )}
-          {mainButtonState == MainButtonState.OpponentTimeOut && (
-            <Button
-              className="uppercase"
-              label={'OPPONENT TIMED OUT'}
-              isReadonly
-            />
-          )}
-          {mainButtonState == MainButtonState.TransactionExecution && (
-            <Button
-              startContent={
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M24 12C24 15.1826 22.7357 18.2348 20.4853 20.4853C18.2348 22.7357 15.1826 24 12 24C8.8174 24 5.76515 22.7357 3.51472 20.4853C1.26428 18.2348 0 15.1826 0 12C0 11.633 0.017 11.269 0.049 10.91L2.041 11.091C2.01367 11.3903 2 11.6933 2 12C2 13.9778 2.58649 15.9112 3.6853 17.5557C4.78412 19.2002 6.3459 20.4819 8.17317 21.2388C10.0004 21.9957 12.0111 22.1937 13.9509 21.8079C15.8907 21.422 17.6725 20.4696 19.0711 19.0711C20.4696 17.6725 21.422 15.8907 21.8079 13.9509C22.1937 12.0111 21.9957 10.0004 21.2388 8.17317C20.4819 6.3459 19.2002 4.78412 17.5557 3.6853C15.9112 2.58649 13.9778 2 12 2C11.6933 2 11.3903 2.01367 11.091 2.041L10.91 0.049C11.269 0.017 11.633 0 12 0C15.1815 0.00344108 18.2318 1.26883 20.4815 3.51852C22.7312 5.76821 23.9966 8.81846 24 12ZM5.663 4.263L4.395 2.717C3.78121 3.2216 3.2185 3.78531 2.715 4.4L4.262 5.665C4.68212 5.15305 5.15135 4.68348 5.663 4.263ZM9.142 2.415L8.571 0.5C7.80965 0.726352 7.0727 1.02783 6.371 1.4L7.31 3.166C7.89418 2.85539 8.50789 2.60381 9.142 2.415ZM3.164 7.315L1.4 6.375C1.02801 7.07678 0.726533 7.81372 0.5 8.575L2.417 9.146C2.60454 8.51172 2.85478 7.89769 3.164 7.313V7.315ZM11 6V10.277C10.7004 10.4513 10.4513 10.7004 10.277 11H7V13H10.277C10.4297 13.2652 10.6414 13.4917 10.8958 13.662C11.1501 13.8323 11.4402 13.9417 11.7436 13.9818C12.047 14.0219 12.3556 13.9917 12.6454 13.8934C12.9353 13.7951 13.1986 13.6314 13.415 13.415C13.6314 13.1986 13.7951 12.9353 13.8934 12.6454C13.9917 12.3556 14.0219 12.047 13.9818 11.7436C13.9417 11.4402 13.8323 11.1501 13.662 10.8958C13.4917 10.6414 13.2652 10.4297 13 10.277V6H11Z"
-                    fill="#252525"
-                  />
-                </svg>
-              }
-              className="uppercase"
-              label={'TRANSACTION EXECUTION'}
-              isReadonly
-            />
-          )}
-        </div>
+
         <div
           className={
             'flex flex-row gap-4 font-plexsans text-[14px]/[14px] text-left-accent lg:hidden lg:text-[20px]/[20px]'
@@ -644,31 +611,6 @@ export default function Randzu({
             <span>{formatPubkey(matchQueue.gameInfo?.opponent)}</span>
           </div>
         </div>
-        <Competition
-          isPvp
-          startGame={restart}
-          isRestartBtn={
-            gameState === GameState.Lost ||
-            gameState === GameState.Won ||
-            gameState === GameState.OpponentTimeout
-          }
-          competition={
-            competition && {
-              id: Number(competition?.id),
-              game: {
-                id: randzuConfig.id,
-                name: randzuConfig.name,
-                rules: randzuConfig.rules,
-                rating: getRatingQuery.data?.rating,
-                author: randzuConfig.author,
-              },
-              title: lobbiesStore.activeLobby?.name || 'Unknown',
-              reward: lobbiesStore.activeLobby?.reward || 0n,
-              currency: Currency.MINA,
-              startPrice: lobbiesStore.lobbies?.[0]?.fee || 0n,
-            }
-          }
-        />
       </motion.div>
     </GamePage>
   );

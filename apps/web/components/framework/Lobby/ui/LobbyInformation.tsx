@@ -227,8 +227,8 @@ export const LobbyInformation = <RuntimeModules extends RuntimeModulesRecord>({
                 width="24"
                 height="24"
                 rx="4.5"
-                fill="#D2FF00"
-                stroke="#D2FF00"
+                fill="#EEE1B3"
+                stroke="#EEE1B3"
               />
               <path d="M16 21L8 12.5L16 4" stroke="#141414" strokeWidth="2" />
             </svg>

@@ -21,5 +21,5 @@ export const pokerConfig = createZkNoidGameConfig({
   rules: 'Poker rules',
   runtimeModules: {}, // TEMPORARY!!!
   page: Poker,
-  externalUrl: 'http://localhost:3000/games/poker/global',
+  externalUrl: 'http://localhost:3000/games/pokershowdown/global',
 });

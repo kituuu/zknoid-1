@@ -1,4 +1,4 @@
-import PokerCoverSVG from '@/games/poker/assets/game-cover.svg';
+import PokerCoverSVG from '@/games/pokershowdown/assets/game-cover.svg';
 import GamePage from '@/components/framework/GamePage';
 import { pokerConfig } from '@/games/poker/config';
 import Button from '@/components/shared/Button';
@@ -34,29 +34,29 @@ export const Poker = () => {
             />
             <path
               d="M80.442 149.22C118.427 149.22 149.22 118.427 149.22 80.442C149.22 42.457 118.427 11.6641 80.442 11.6641C42.457 11.6641 11.6641 42.457 11.6641 80.442C11.6641 118.427 42.457 149.22 80.442 149.22Z"
-              stroke="#D2FF00"
+              stroke="#EEE1B3"
               strokeWidth="8"
               strokeMiterlimit="10"
             />
             <path
               d="M52.8568 92.7354C56.0407 92.7354 58.6218 82.6978 58.6218 70.3157C58.6218 57.9337 56.0407 47.8961 52.8568 47.8961C49.6729 47.8961 47.0918 57.9337 47.0918 70.3157C47.0918 82.6978 49.6729 92.7354 52.8568 92.7354Z"
-              fill="#D2FF00"
+              fill="#EEE1B3"
             />
             <path
               d="M103.461 92.7354C106.645 92.7354 109.226 82.6978 109.226 70.3157C109.226 57.9337 106.645 47.8961 103.461 47.8961C100.277 47.8961 97.6963 57.9337 97.6963 70.3157C97.6963 82.6978 100.277 92.7354 103.461 92.7354Z"
-              fill="#D2FF00"
+              fill="#EEE1B3"
             />
             <path
               d="M135.489 76.4906H118.194V82.7178H135.489V76.4906Z"
-              fill="#D2FF00"
+              fill="#EEE1B3"
             />
             <path
               d="M38.7647 76.4906H21.4697V82.7178H38.7647V76.4906Z"
-              fill="#D2FF00"
+              fill="#EEE1B3"
             />
             <path
               d="M108.616 109.029C104.26 111.673 94.0101 117.095 79.8623 117.285C65.4748 117.478 54.9435 112.155 50.5391 109.598"
-              stroke="#D2FF00"
+              stroke="#EEE1B3"
               strokeWidth="5"
               strokeMiterlimit="10"
             />
@@ -384,7 +384,7 @@ export const Poker = () => {
               >
                 <path
                   d="M9.5 0.523438L11.6329 7.08778H18.535L12.9511 11.1448L15.084 17.7091L9.5 13.6521L3.91604 17.7091L6.04892 11.1448L0.464963 7.08778H7.36712L9.5 0.523438Z"
-                  fill="#D2FF00"
+                  fill="#EEE1B3"
                 />
               </svg>
               <span

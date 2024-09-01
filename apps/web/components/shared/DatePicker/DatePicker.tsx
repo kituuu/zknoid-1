@@ -109,7 +109,7 @@ export default function DatePicker({
                   >
                     <path
                       d="M5 11L1 6L5 1"
-                      stroke="#D2FF00"
+                      stroke="#EEE1B3"
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -148,7 +148,7 @@ export default function DatePicker({
                   >
                     <path
                       d="M1 11L5 6L1 1"
-                      stroke="#D2FF00"
+                      stroke="#EEE1B3"
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"

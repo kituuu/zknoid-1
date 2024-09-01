@@ -41,13 +41,13 @@ export const CreateNewLobbyBtn = ({ onClick }: { onClick: () => void }) => {
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <rect y="12.7273" width="28" height="2.54545" fill="#D2FF00" />
+          <rect y="12.7273" width="28" height="2.54545" fill="#EEE1B3" />
           <rect
             x="15.2734"
             width="28"
             height="2.54545"
             transform="rotate(90 15.2734 0)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
         </svg>
         <span

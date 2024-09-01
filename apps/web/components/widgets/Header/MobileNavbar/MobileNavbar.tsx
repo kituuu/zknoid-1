@@ -22,7 +22,6 @@ const MobileBalanceInfo = dynamic(() => import('./nonSSR/MobileBalanceInfo'), {
   ssr: false,
 });
 
-
 const NetworkPicker = dynamic(
   () =>
     import('@/components/widgets/Header/nonSSR/NetworkPicker/NetworkPicker'),
@@ -102,7 +101,7 @@ export default function MobileNavbar({
               show: {
                 rotate: 45,
                 y: 9,
-                backgroundColor: '#D2FF00',
+                backgroundColor: '#EEE1B3',
               },
             }}
             className="block h-[3px] w-[30px] bg-[#fff]"
@@ -128,7 +127,7 @@ export default function MobileNavbar({
               show: {
                 rotate: -45,
                 y: -9,
-                backgroundColor: '#D2FF00',
+                backgroundColor: '#EEE1B3',
               },
             }}
             className="block h-[3px] w-[30px] bg-[#fff]"

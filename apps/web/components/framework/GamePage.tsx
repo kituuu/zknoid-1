@@ -91,7 +91,7 @@ const SwitchBtn = ({
           <path
             d="M1 31V108.456V155C1 171.569 14.4315 185 31 185H391C407.569 185 421 171.569 421 155V65.0353C421 55.3352 416.31 46.2337 408.41 40.6042L360.651 6.56893C355.568 2.9467 349.482 1 343.24 1H31C14.4315 1 1 14.4314 1 31Z"
             fill="#252525"
-            stroke="#D2FF00"
+            stroke="#EEE1B3"
             strokeWidth="2"
           />
         </svg>
@@ -224,8 +224,8 @@ export default function GamePage<RuntimeModules extends RuntimeModulesRecord>({
 }: {
   children: ReactNode;
   gameConfig: ZkNoidGameConfig<RuntimeModules>;
-  image: any;
-  mobileImage: any;
+  image?: any;
+  mobileImage?: any;
   defaultPage: 'Competitions List' | 'Game' | 'New Competition' | 'Lobby list';
   customDesign?: boolean;
 }) {
@@ -236,30 +236,6 @@ export default function GamePage<RuntimeModules extends RuntimeModulesRecord>({
       <div className={'flex flex-col px-5'}>
         {!customDesign ? (
           <>
-            <div
-              className={
-                'mb-12 w-full rounded-[10px] border border-left-accent lg:rounded-[20px] lg:border-2'
-              }
-            >
-              <Image
-                src={image}
-                alt={'Game'}
-                width={1500}
-                height={30}
-                className={
-                  'hidden w-full rounded-[10px] object-contain object-center lg:block'
-                }
-              />
-              <Image
-                src={mobileImage}
-                alt={'Game'}
-                width={1500}
-                height={30}
-                className={
-                  'block w-full rounded-[10px] object-contain object-center lg:hidden'
-                }
-              />
-            </div>
             <WidgetsSwitch
               competitionsSupported={!!gameConfig.pageCompetitionsList}
               lobbiesSupported={!!gameConfig.lobby}

@@ -61,7 +61,7 @@ export const LobbyItem = ({
             fillRule="evenodd"
             clipRule="evenodd"
             d="M33.4141 0L49.615 16.201L48.2008 17.6152L48.1923 17.6066L33.6212 32.1776L32.207 30.7634L45.9705 17H0V15H45.5856L31.9998 1.41421L33.4141 0Z"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
         </svg>
       </div>

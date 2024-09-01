@@ -60,11 +60,11 @@ export default function EventCard({
             height="67"
             rx="4.5"
             fill="#212121"
-            stroke="#D2FF00"
+            stroke="#EEE1B3"
           />
           <path
             d="M23.7998 15.3193L43.6331 35.1527L23.7998 54.986"
-            stroke="#D2FF00"
+            stroke="#EEE1B3"
             strokeWidth="5.66667"
           />
         </svg>

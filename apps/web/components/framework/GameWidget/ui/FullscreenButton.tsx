@@ -27,39 +27,39 @@ export const FullscreenButton = ({
             width="2"
             height="9"
             transform="rotate(-180 9 9)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
           <rect
             width="2"
             height="9"
             transform="matrix(-1 8.74228e-08 8.74228e-08 1 9 17)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
           <rect
             width="2"
             height="9"
             transform="matrix(1 -8.74228e-08 -8.74228e-08 -1 17 9)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
-          <rect x="17" y="17" width="2" height="9" fill="#D2FF00" />
+          <rect x="17" y="17" width="2" height="9" fill="#EEE1B3" />
           <rect
             y="9"
             width="2"
             height="9"
             transform="rotate(-90 0 9)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
           <rect
             width="2"
             height="9"
             transform="matrix(1.31134e-07 1 1 -1.31134e-07 0 17)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
           <rect
             width="2"
             height="9"
             transform="matrix(-1.31134e-07 -1 -1 1.31134e-07 26 9)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
           <rect
             x="26"
@@ -67,7 +67,7 @@ export const FullscreenButton = ({
             width="2"
             height="9"
             transform="rotate(90 26 17)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
         </svg>
       ) : (
@@ -79,18 +79,18 @@ export const FullscreenButton = ({
           xmlns="http://www.w3.org/2000/svg"
           className={'group-hover:opacity-80'}
         >
-          <rect width="2" height="9" fill="#D2FF00" />
+          <rect width="2" height="9" fill="#EEE1B3" />
           <rect
             width="2"
             height="9"
             transform="matrix(1 -1.74846e-07 -1.74846e-07 -1 0 26)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
           <rect
             width="2"
             height="9"
             transform="matrix(-1 0 0 1 26 0)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
           <rect
             x="26"
@@ -98,26 +98,26 @@ export const FullscreenButton = ({
             width="2"
             height="9"
             transform="rotate(-180 26 26)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
           <rect
             x="9"
             width="2"
             height="9"
             transform="rotate(90 9 0)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
           <rect
             width="2"
             height="9"
             transform="matrix(-2.18557e-07 -1 -1 2.18557e-07 9 26)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
           <rect
             width="2"
             height="9"
             transform="matrix(4.37114e-08 1 1 -4.37114e-08 17 0)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
           <rect
             x="17"
@@ -125,7 +125,7 @@ export const FullscreenButton = ({
             width="2"
             height="9"
             transform="rotate(-90 17 26)"
-            fill="#D2FF00"
+            fill="#EEE1B3"
           />
         </svg>
       )}

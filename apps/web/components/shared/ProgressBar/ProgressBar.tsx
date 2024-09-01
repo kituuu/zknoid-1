@@ -33,7 +33,7 @@ export default function ProgressBar({
 
   const handleX = useMotionValue(0);
   const progress = useTransform(handleX, (v) => v + handleSize / 2);
-  const background = useMotionTemplate`linear-gradient(90deg, #F9F8F4 5%, #D2FF00 ${progress}px)`;
+  const background = useMotionTemplate`linear-gradient(90deg, #F9F8F4 5%, #EEE1B3 ${progress}px)`;
 
   const handleDrag = () => {
     // @ts-ignore
@@ -41,7 +41,8 @@ export default function ProgressBar({
     const middleOfHandle = handleBounds.x + handleBounds.width / 2;
     const progressBarBounds = progressBarRef.current?.getBoundingClientRect();
     // @ts-ignore
-    const newProgress = (middleOfHandle - progressBarBounds.x) / progressBarBounds.width;
+    const newProgress =
+      (middleOfHandle - progressBarBounds.x) / progressBarBounds.width;
 
     setMaxValue(newProgress * (max - min));
   };
@@ -101,7 +102,8 @@ export default function ProgressBar({
           className="absolute h-4 w-full"
           onPointerDown={(event) => {
             // @ts-ignore
-            const { left, width } = progressBarRef.current.getBoundingClientRect();
+            const { left, width } =
+              progressBarRef.current.getBoundingClientRect();
             const position = event.pageX - left;
             const newProgress = clamp(position / width, 0, 1);
             const newValue = newProgress * (max - min);

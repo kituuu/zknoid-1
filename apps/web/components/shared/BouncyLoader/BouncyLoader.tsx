@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 
 export default function BouncyLoader({
-  colors = ['#D2FF00', '#DCB8FF', '#FF5B23'],
+  colors = ['#EEE1B3', '#DCB8FF', '#FF5B23'],
 }: {
   colors?: [string, string, string];
 }) {

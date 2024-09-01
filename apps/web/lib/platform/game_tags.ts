@@ -2,6 +2,7 @@ export enum ZkNoidGameGenre {
   Arcade = 'Arcade',
   BoardGames = 'Board games',
   Lucky = 'Lucky',
+  Card = 'Card Games',
   // ComingSoon = 'Coming soon',
 }
 
