@@ -99,9 +99,9 @@ export default function Home() {
         </main>
 
         <Footer />
-        <Game />
+        {/* <Game /> */}
 
-        {/*<ToastContainer />*/}
+        {/* <ToastContainer /> */}
       </div>
     </ZkNoidGameContext.Provider>
   );

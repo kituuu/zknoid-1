@@ -5,24 +5,39 @@ import { NextPage } from 'next';
 import Cards from './Cards';
 
 import RaiseModal from './RaiseModal';
+import { RandzuField } from 'zknoid-chain-dev';
+import { IGameInfo, MatchQueueState } from '@/lib/stores/matchQueue';
 
 // let socket;
 // const ENDPOINT = process.env.NEXT_PUBLIC_ENDPOINT;
 
-interface GameProps {}
+interface IGameViewProps {
+  gameInfo: IGameInfo<RandzuField> | undefined;
+  matchInfo: MatchQueueState;
+  onCellClicked: (x: number, y: number) => void;
+  loadingElement: { x: number; y: number } | undefined;
+  loading: boolean;
+}
 
 interface CardData {
   value: string;
   suit: string;
 }
 
-const Game: NextPage<GameProps> = () => {
+const Game = ({
+  gameInfo,
+  matchInfo,
+  onCellClicked,
+  loadingElement,
+  loading,
+}: IGameViewProps) => {
   //   const router = useRouter();
   //   const { roomCode } = router.query;
-  const roomCode = 'safsd';
 
   // Initialize socket state
-  const [room, setRoom] = useState<string | string[] | undefined>(roomCode);
+  const [room, setRoom] = useState<string | string[] | undefined>(
+    matchInfo.activeGameId.toString()
+  );
   const [roomFull, setRoomFull] = useState(false);
   const [users, setUsers] = useState<string[]>([]);
   const [currentUser, setCurrentUser] = useState('');
@@ -84,10 +99,6 @@ const Game: NextPage<GameProps> = () => {
   // Local state
   const [shuffledDeck, setShuffledDeck] = useState<string[]>([]);
   const [restart, setRestart] = useState(false);
-
-  // Restart game logic...
-
-  //   if (users.length < 2) return <h1>Waiting...</h1>;
 
   return (
     <div className="game-bg noselect">

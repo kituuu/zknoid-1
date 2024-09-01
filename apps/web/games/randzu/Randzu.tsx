@@ -54,6 +54,7 @@ import {
   useObserveLobbiesStore,
 } from '@/lib/stores/lobbiesStore';
 import { type PendingTransaction } from '@proto-kit/sequencer';
+import Game from '@/components/pages/Poker/game/Game';
 
 const competition = {
   id: 'global',
@@ -539,8 +540,9 @@ export default function Randzu({
             gameState === GameState.MatchRegistration ||
             gameState === GameState.CurrentPlayerTurn ||
             gameState === GameState.OpponentTurn) && (
-            <GameView
+            <Game
               gameInfo={matchQueue.gameInfo}
+              matchInfo={matchQueue}
               onCellClicked={onCellClicked}
               loadingElement={loadingElement}
               loading={loading}
