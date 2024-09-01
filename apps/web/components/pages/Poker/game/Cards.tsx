@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Card from './Card'; // Assuming Card component is defined elsewhere
+import { Deck } from '@/games/poker/utils/deck';
 
 interface CardData {
   value: string;
@@ -11,9 +12,9 @@ type CardValue = number | 'J' | 'Q' | 'K' | 'A';
 
 interface CardsProps {
   numberOfTurns: number;
-  player1Deck: CardData[];
-  player2Deck: CardData[];
-  houseDeck: CardData[];
+  player1Deck: Deck[];
+  player2Deck: Deck[];
+  houseDeck: Deck[];
   gameOver: boolean;
   currentUser: 'Player 1' | 'Player 2' | string;
   player1Chips: number;
@@ -41,7 +42,6 @@ export default function Cards({
   const [p1Heading, setP1Heading] = useState<string>('');
   const [p2Heading, setP2Heading] = useState<string>('');
   const [houseHeading, setHouseHeading] = useState<string>('');
-
   useEffect(() => {
     if (numberOfTurns < 2) setHouseHeading('Buy In to reveal cards');
     else if (numberOfTurns >= 2 && numberOfTurns < 4) setHouseHeading('Flop');
