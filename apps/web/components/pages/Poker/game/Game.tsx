@@ -15,7 +15,6 @@ import shuffleArray from '@/games/poker/utils/shuffleArray';
 interface IGameViewProps {
   gameInfo: IGameInfo<RandzuField> | undefined;
   matchInfo: MatchQueueState;
-  onCellClicked: (x: number, y: number) => void;
   loadingElement: { x: number; y: number } | undefined;
   loading: boolean;
 }
@@ -23,7 +22,6 @@ interface IGameViewProps {
 const Game = ({
   gameInfo,
   matchInfo,
-  onCellClicked,
   loadingElement,
   loading,
 }: IGameViewProps) => {

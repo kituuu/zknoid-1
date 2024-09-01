@@ -224,8 +224,8 @@ export default function GamePage<RuntimeModules extends RuntimeModulesRecord>({
 }: {
   children: ReactNode;
   gameConfig: ZkNoidGameConfig<RuntimeModules>;
-  image: any;
-  mobileImage: any;
+  image?: any;
+  mobileImage?: any;
   defaultPage: 'Competitions List' | 'Game' | 'New Competition' | 'Lobby list';
   customDesign?: boolean;
 }) {
@@ -236,30 +236,6 @@ export default function GamePage<RuntimeModules extends RuntimeModulesRecord>({
       <div className={'flex flex-col px-5'}>
         {!customDesign ? (
           <>
-            <div
-              className={
-                'mb-12 w-full rounded-[10px] border border-left-accent lg:rounded-[20px] lg:border-2'
-              }
-            >
-              <Image
-                src={image}
-                alt={'Game'}
-                width={1500}
-                height={30}
-                className={
-                  'hidden w-full rounded-[10px] object-contain object-center lg:block'
-                }
-              />
-              <Image
-                src={mobileImage}
-                alt={'Game'}
-                width={1500}
-                height={30}
-                className={
-                  'block w-full rounded-[10px] object-contain object-center lg:hidden'
-                }
-              />
-            </div>
             <WidgetsSwitch
               competitionsSupported={!!gameConfig.pageCompetitionsList}
               lobbiesSupported={!!gameConfig.lobby}

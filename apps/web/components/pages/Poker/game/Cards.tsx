@@ -2,11 +2,6 @@ import React, { useState, useEffect } from 'react';
 import Card from './Card'; // Assuming Card component is defined elsewhere
 import { Deck } from '@/games/poker/utils/deck';
 
-interface CardData {
-  value: string;
-  suit: string;
-}
-
 type Suit = 'diamonds' | 'clubs' | 'spades' | 'hearts' | 'BACK';
 type CardValue = number | 'J' | 'Q' | 'K' | 'A';
 
@@ -90,19 +85,14 @@ export default function Cards({
                 return (
                   <Card
                     key={index}
-                    className="player-card"
+                    className="h-60"
                     value={item.value as CardValue}
                     suit={item.suit as Suit}
                   />
                 );
               else
                 return (
-                  <Card
-                    key={index}
-                    className="player-card-back"
-                    suit="BACK"
-                    value={1}
-                  />
+                  <Card key={index} className="h-52" suit="BACK" value={1} />
                 );
             })}
         </div>
@@ -155,7 +145,7 @@ export default function Cards({
                   key={index}
                   value={item.value as CardValue}
                   suit={(numberOfTurns >= 2 ? item.suit : 'BACK') as Suit}
-                  className="card"
+                  className="h-56"
                 />
               );
           })}
@@ -199,19 +189,14 @@ export default function Cards({
                 return (
                   <Card
                     key={index}
-                    className="player-card"
+                    className="h-60"
                     value={item.value as CardValue}
                     suit={item.suit as Suit}
                   />
                 );
               else
                 return (
-                  <Card
-                    key={index}
-                    className="player-card-back"
-                    suit="BACK"
-                    value={1}
-                  />
+                  <Card key={index} className="h-52" suit="BACK" value={1} />
                 );
             })}
         </div>
